@@ -36,6 +36,7 @@ exports.signup = async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
+    role: req.body.role,
   });
 
   sendToken(newUser, 201, res);
@@ -51,6 +52,33 @@ exports.login = async (req, res, next) => {
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError("Incorrect email or password", 401));
   }
+
+  sendToken(user, 200, res);
+};
+
+exports.logout = (req, res) => {
+  res.clearCookie("jwt", {
+    httpOnly: true,
+  });
+  res.status(200).json({
+    status: "success",
+    message: "Logged out successfully",
+  });
+};
+
+exports.updatePassword = async (req, res, next) => {
+  const user = await User.findById(req.user.id).select("+password");
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+    return next(new AppError("Incorrect password!", 401));
+  }
+
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
 
   sendToken(user, 200, res);
 };
