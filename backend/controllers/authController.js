@@ -1,5 +1,7 @@
 const AppError = require("../utils/appError");
 const User = require("../models/userModel");
+const { sendEmail } = require("../utils/email");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const signToken = (id) =>
@@ -78,6 +80,64 @@ exports.updatePassword = async (req, res, next) => {
 
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+
+  sendToken(user, 200, res);
+};
+
+exports.forgotPassword = async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    return next(new AppError("No user found with this email!", 404));
+  }
+
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  const resetURL = `${req.protocol}://${req.get("host")}/api/users/reset-password/${resetToken}`;
+  const message = `Forgot password? Submit a patch request with new password and passwordConfirm to: ${resetURL}.\n If you didn't forget your password, please ignore this email.`;
+
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: "Password Reset Token",
+      message,
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Password reset token successfully sent to provided email",
+    });
+  } catch (err) {
+    console.log(err);
+    user.passwordResetToken = undefined;
+    user.passwordResetTokenExpiry = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(
+      new AppError("Error sending reset token. Please try again later!", 500),
+    );
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetTokenExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new AppError("Token is invalid or has expired!", 400));
+  }
+
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetTokenExpiry = undefined;
   await user.save();
 
   sendToken(user, 200, res);
