@@ -4,6 +4,7 @@ const AppError = require('../utils/appError');
 exports.createCampaign = async (req, res, next) => {
   const data = { ...req.body };
   delete data.creator;
+  delete data.status;
 
   const newCampaign = await Campaign.create({
     ...data,
