@@ -4,10 +4,10 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post(
-  '/create-campaign',
-  auth.protect,
-  campaignController.createCampaign,
-);
+router.post('/', auth.protect, campaignController.createCampaign);
+
+router.get('/my-campaigns', auth.protect, campaignController.getMyCampaigns);
+
+router.get('/:id', campaignController.getCampaign);
 
 module.exports = router;

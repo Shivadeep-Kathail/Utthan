@@ -79,6 +79,7 @@ const campaignSchema = new mongoose.Schema(
   {
     timestamps: true,
     versionKey: false,
+    id: false,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   },
