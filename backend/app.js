@@ -1,18 +1,21 @@
-const express = require("express");
-const userRouter = require("./routes/userRoutes");
-const cookieParser = require("cookie-parser");
+const express = require('express');
+const cookieParser = require('cookie-parser');
+
+const userRouter = require('./routes/userRoutes');
+const campaignRouter = require('./routes/campaignRoutes');
 
 const app = express();
-app.use(express.json({ limit: "10kb" }));
+app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
-app.get("/", (req, res) => {
+app.get('/', (req, res) => {
   res.status(200).json({
-    status: "success",
-    message: "Utthan API running",
+    status: 'success',
+    message: 'Utthan API running',
   });
 });
 
-app.use("/api/users", userRouter);
+app.use('/api/users', userRouter);
+app.use('/api/campaign', campaignRouter);
 
 module.exports = app;
