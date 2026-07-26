@@ -14,6 +14,7 @@ router.get('/my-campaigns', auth.protect, campaignController.getMyCampaigns);
 router
   .route('/:id')
   .get(campaignController.getCampaign)
-  .patch(auth.protect, campaignController.updateCampaign);
+  .patch(auth.protect, campaignController.updateCampaign)
+  .delete(auth.protect, campaignController.deleteCampaign);
 
 module.exports = router;

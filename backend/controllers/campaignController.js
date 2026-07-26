@@ -21,10 +21,10 @@ exports.createCampaign = async (req, res, next) => {
 };
 
 exports.getCampaign = async (req, res, next) => {
-  const campaign = await Campaign.findById(req.params.id).populate(
-    'creator',
-    'name email',
-  );
+  const campaign = await Campaign.findOne({
+    _id: req.params.id,
+    isDeleted: false,
+  }).populate('creator', 'name email');
   if (!campaign) {
     return next(new AppError('No campaign found', 404));
   }
@@ -38,7 +38,10 @@ exports.getCampaign = async (req, res, next) => {
 };
 
 exports.getMyCampaigns = async (req, res, next) => {
-  const campaigns = await Campaign.find({ creator: req.user.id });
+  const campaigns = await Campaign.find({
+    creator: req.user.id,
+    isDeleted: false,
+  });
 
   res.status(200).json({
     status: 'success',
@@ -51,7 +54,7 @@ exports.getMyCampaigns = async (req, res, next) => {
 
 exports.getAllCampaigns = async (req, res, next) => {
   const features = new ApiFeatures(
-    Campaign.find().populate('creator', 'name'),
+    Campaign.find({ isDeleted: false }).populate('creator', 'name'),
     req.query,
   )
     .filter()
@@ -71,7 +74,10 @@ exports.getAllCampaigns = async (req, res, next) => {
 };
 
 exports.updateCampaign = async (req, res, next) => {
-  const campaign = await Campaign.findById(req.params.id);
+  const campaign = await Campaign.findOne({
+    _id: req.params.id,
+    isDeleted: false,
+  });
   if (!campaign) {
     return next(new AppError('No Campaign found!', 404));
   }
@@ -105,5 +111,30 @@ exports.updateCampaign = async (req, res, next) => {
     data: {
       campaign,
     },
+  });
+};
+
+exports.deleteCampaign = async (req, res, next) => {
+  const campaign = await Campaign.findOne({
+    _id: req.params.id,
+    isDeleted: false,
+  });
+  if (!campaign) {
+    return next(new AppError('No Campaign found!', 404));
+  }
+  if (campaign.creator.toString() !== req.user.id) {
+    return next(
+      new AppError('Only the campaign creator can delete this campaign.', 403),
+    );
+  }
+
+  campaign.isDeleted = true;
+  campaign.deletedAt = new Date();
+  campaign.deletedBy = req.user.id;
+  await campaign.save();
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
   });
 };
