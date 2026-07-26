@@ -1,5 +1,6 @@
 const Campaign = require('../models/campaignModel');
 const AppError = require('../utils/appError');
+const ApiFeatures = require('../utils/apiFeatures');
 
 exports.createCampaign = async (req, res, next) => {
   const data = { ...req.body };
@@ -38,6 +39,27 @@ exports.getMyCampaigns = async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     results: campaigns.length,
+    data: {
+      campaigns,
+    },
+  });
+};
+
+exports.getAllCampaigns = async (req, res, next) => {
+  const features = new ApiFeatures(
+    Campaign.find().populate('creator', 'name'),
+    req.query,
+  )
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const campaigns = await features.query;
+  res.status(200).json({
+    status: 'success',
+    results: campaigns.length,
+    page: features.page,
     data: {
       campaigns,
     },
