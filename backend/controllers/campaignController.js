@@ -1,6 +1,7 @@
 const Campaign = require('../models/campaignModel');
 const AppError = require('../utils/appError');
 const ApiFeatures = require('../utils/apiFeatures');
+const filterObject = require('../utils/filterObj');
 
 exports.createCampaign = async (req, res, next) => {
   const data = { ...req.body };
@@ -20,7 +21,10 @@ exports.createCampaign = async (req, res, next) => {
 };
 
 exports.getCampaign = async (req, res, next) => {
-  const campaign = await Campaign.findById(req.params.id);
+  const campaign = await Campaign.findById(req.params.id).populate(
+    'creator',
+    'name email',
+  );
   if (!campaign) {
     return next(new AppError('No campaign found', 404));
   }
@@ -62,6 +66,44 @@ exports.getAllCampaigns = async (req, res, next) => {
     page: features.page,
     data: {
       campaigns,
+    },
+  });
+};
+
+exports.updateCampaign = async (req, res, next) => {
+  const campaign = await Campaign.findById(req.params.id);
+  if (!campaign) {
+    return next(new AppError('No Campaign found!', 404));
+  }
+  if (
+    campaign.creator.toString() !== req.user.id &&
+    req.user.role !== 'admin'
+  ) {
+    return next(new AppError('Permission to update campaign denied!', 403));
+  }
+
+  const filteredBody = filterObject(
+    req.body,
+    'title',
+    'description',
+    'category',
+    'coverImage',
+    'images',
+    'location',
+  );
+
+  if (Object.keys(filteredBody).length === 0) {
+    return next(new AppError('No valid fields provided for update.', 400));
+  }
+
+  // Aternative for making another query with findByIdAndUpdate
+  Object.assign(campaign, filteredBody);
+  await campaign.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      campaign,
     },
   });
 };

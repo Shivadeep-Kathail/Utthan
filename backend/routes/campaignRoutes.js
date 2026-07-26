@@ -4,9 +4,16 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/', auth.protect, campaignController.createCampaign);
+router
+  .route('/')
+  .post(auth.protect, campaignController.createCampaign)
+  .get(campaignController.getAllCampaigns);
+
 router.get('/my-campaigns', auth.protect, campaignController.getMyCampaigns);
-router.get('/', campaignController.getAllCampaigns);
-router.get('/:id', campaignController.getCampaign);
+
+router
+  .route('/:id')
+  .get(campaignController.getCampaign)
+  .patch(auth.protect, campaignController.updateCampaign);
 
 module.exports = router;

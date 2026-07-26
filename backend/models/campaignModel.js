@@ -86,9 +86,5 @@ const campaignSchema = new mongoose.Schema(
 );
 campaignSchema.index({ location: '2dsphere' });
 
-campaignSchema.pre(/^find/, function () {
-  this.populate('creator', 'name email');
-});
-
 const Campaign = mongoose.model('Campaign', campaignSchema);
 module.exports = Campaign;
