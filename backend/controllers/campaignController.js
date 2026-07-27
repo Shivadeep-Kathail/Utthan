@@ -54,7 +54,10 @@ exports.getMyCampaigns = async (req, res, next) => {
 
 exports.getAllCampaigns = async (req, res, next) => {
   const features = new ApiFeatures(
-    Campaign.find({ isDeleted: false }).populate('creator', 'name'),
+    Campaign.find({
+      isDeleted: false,
+      status: { $in: ['active', 'closed'] },
+    }).populate('creator', 'name'),
     req.query,
   )
     .filter()

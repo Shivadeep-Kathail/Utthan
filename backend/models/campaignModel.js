@@ -42,7 +42,7 @@ const campaignSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'active', 'closed', 'flagged'],
+      enum: ['pending', 'active', 'closed', 'flagged', 'rejected'],
       default: 'pending',
     },
     coverImage: {
