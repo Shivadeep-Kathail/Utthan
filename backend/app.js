@@ -3,6 +3,7 @@ const cookieParser = require('cookie-parser');
 
 const userRouter = require('./routes/userRoutes');
 const campaignRouter = require('./routes/campaignRoutes');
+const adminCampaignRouter = require('./routes/adminRoutes');
 
 const app = express();
 app.use(express.json({ limit: '10kb' }));
@@ -17,5 +18,6 @@ app.get('/', (req, res) => {
 
 app.use('/api/users', userRouter);
 app.use('/api/campaign', campaignRouter);
+app.use('/api/admin/campaigns', adminCampaignRouter);
 
 module.exports = app;
