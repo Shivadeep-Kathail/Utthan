@@ -3,10 +3,14 @@ const User = require('../models/userModel');
 const filterObject = require('../utils/filterObj');
 
 exports.getMe = async (req, res, next) => {
-  const user = await User.findById(req.user.id).select('-__v -createdAt');
+  const user = await User.findOne({
+    _id: req.user.id,
+    isDeleted: false,
+  }).select('-__v -createdAt -deletedAt -deletedBy');
   if (!user) {
     return next(new AppError('User not found!', 404));
   }
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -30,9 +34,9 @@ exports.updateMe = async (req, res, next) => {
     return next(new AppError('No valid fields provided for update.', 422));
   }
 
-  const user = await User.findById(req.user.id);
+  const user = await User.findOne({ _id: req.user.id, isDeleted: false });
   if (!user) {
-    return next(new AppError('No user found', 404));
+    return next(new AppError('User not found.', 404));
   }
 
   Object.assign(user, filteredBody);
@@ -43,5 +47,21 @@ exports.updateMe = async (req, res, next) => {
     data: {
       user,
     },
+  });
+};
+
+exports.deleteMe = async (req, res, next) => {
+  const user = await User.findOne({ _id: req.user.id, isDeleted: false });
+  if (!user) {
+    return next(new AppError('User not found!', 404));
+  }
+  user.isDeleted = true;
+  user.deletedAt = new Date();
+  user.deletedBy = req.user.id;
+  await user.save();
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
   });
 };
