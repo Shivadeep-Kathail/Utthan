@@ -11,6 +11,7 @@ router.get('/active', adminCampaignController.getAllActiveCampaigns);
 router.get('/deleted', adminCampaignController.getAllDeletedCampaigns);
 router.get('/flagged', adminCampaignController.getAllFlaggedCampaigns);
 router.get('/pending', adminCampaignController.getAllPendingCampaigns);
+router.get('/:id', adminCampaignController.getCampaign);
 
 // Campaign Management Routes
 router.patch('/:id/approve', adminCampaignController.approveCampaign);

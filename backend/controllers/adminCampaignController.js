@@ -33,6 +33,21 @@ exports.getAllActiveCampaigns = getCampaignsByQuery({
   status: 'active',
   isDeleted: false,
 });
+exports.getCampaign = async (req, res, next) => {
+  const campaign = await Campaign.findById(req.params.id).populate(
+    'creator',
+    'name email',
+  );
+  if (!campaign) {
+    return next(new AppError('No campaign found!', 404));
+  }
+  res.status(200).json({
+    status: 'success',
+    data: {
+      campaign,
+    },
+  });
+};
 
 // Campaign Management
 const updateCampaignStatus =
