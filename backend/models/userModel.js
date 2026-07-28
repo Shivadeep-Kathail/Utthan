@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'moderator', 'admin'],
       default: 'user',
     },
+    phone: {
+      type: Number,
+      required: true,
+      validate: {
+        validator: function (el) {
+          return el.length == 10;
+        },
+        message: 'Invalid mobile number',
+      },
+    },
     image: {
       type: String,
     },

@@ -102,7 +102,7 @@ exports.updateCampaign = async (req, res, next) => {
   );
 
   if (Object.keys(filteredBody).length === 0) {
-    return next(new AppError('No valid fields provided for update.', 400));
+    return next(new AppError('No valid fields provided for update.', 422));
   }
 
   // Aternative for making another query with findByIdAndUpdate
