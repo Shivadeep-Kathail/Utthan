@@ -5,12 +5,15 @@ const campaignSchema = new mongoose.Schema(
     title: {
       type: String,
       required: [true, 'Please enter Campaign name.'],
+      minlength: [10, 'Campaign title must be at least 10 characters'],
+      maxlength: [100, 'Campaign title cannot exceed 100 characters'],
       trim: true,
     },
     creator: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'A Campaign must have a creator'],
+      immutable: true,
     },
     description: {
       type: String,
@@ -23,6 +26,66 @@ const campaignSchema = new mongoose.Schema(
       type: String,
       enum: ['fundraising', 'participation', 'goods-donation'],
       default: 'fundraising',
+    },
+    amountNeeded: {
+      type: Number,
+      required: function () {
+        return this.type === 'fundraising';
+      },
+      min: 1,
+    },
+    amountRaised: {
+      type: Number,
+      default: 0,
+      min: 0,
+      validate: {
+        validator: function (value) {
+          return this.amountNeeded == null || value <= this.amountNeeded;
+        },
+        message: 'Amount raised cannot exceed amount needed.',
+      },
+    },
+    participantGoal: {
+      type: Number,
+      required: function () {
+        return this.type === 'participation';
+      },
+      min: 1,
+    },
+    participantCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    items: {
+      type: [
+        {
+          _id: false,
+          name: {
+            type: String,
+            required: true,
+          },
+          needed: {
+            type: Number,
+            required: true,
+            min: 1,
+          },
+          received: {
+            type: Number,
+            default: 0,
+            min: 0,
+            validate: {
+              validator: function (value) {
+                return value <= this.needed;
+              },
+              message: 'Received items cannot exceed needed items.',
+            },
+          },
+        },
+      ],
+      required: function () {
+        return this.type === 'goods-donation';
+      },
     },
     category: {
       type: String,
@@ -61,15 +124,21 @@ const campaignSchema = new mongoose.Schema(
       },
       coordinates: {
         type: [Number],
-        validate: {
-          validator: (arr) => Array.isArray(arr) && arr.length === 2,
-          message: 'Coordinates must contain longitude and latitude.',
-        },
         required: [true, 'A Campaign must have a location'],
+        validate: {
+          validator: (arr) =>
+            Array.isArray(arr) &&
+            arr.length === 2 &&
+            arr[0] >= -180 &&
+            arr[0] <= 180 &&
+            arr[1] >= -90 &&
+            arr[1] <= 90,
+          message: 'Coordinates must be [longitude, latitude].',
+        },
       },
       address: {
         type: String,
-        required: [true, 'A Campaign must have a address'],
+        required: [true, 'A Campaign must have an address'],
       },
       description: {
         type: String,
@@ -96,6 +165,32 @@ const campaignSchema = new mongoose.Schema(
   },
 );
 campaignSchema.index({ location: '2dsphere' });
+campaignSchema.index({ creator: 1 });
+campaignSchema.index({ category: 1 });
+campaignSchema.index({ status: 1 });
+campaignSchema.index({ type: 1 });
+campaignSchema.index({ createdAt: -1 });
+
+campaignSchema.virtual('fundingProgress').get(function () {
+  if (this.type !== 'fundraising') return null;
+
+  return (this.amountRaised / this.amountNeeded) * 100;
+});
+
+campaignSchema.virtual('participationProgress').get(function () {
+  if (this.type !== 'participation') return null;
+
+  return (this.participantCount / this.participantGoal) * 100;
+});
+
+campaignSchema.virtual('goodsProgress').get(function () {
+  if (this.type !== 'goods-donation') return null;
+
+  const needed = this.items.reduce((sum, item) => sum + item.needed, 0);
+  const received = this.items.reduce((sum, item) => sum + item.received, 0);
+
+  return (received / needed) * 100;
+});
 
 const Campaign = mongoose.model('Campaign', campaignSchema);
 module.exports = Campaign;
