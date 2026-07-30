@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { trim } = require('validator');
 
 const donationSchema = new mongoose.Schema(
   {
@@ -11,7 +10,7 @@ const donationSchema = new mongoose.Schema(
     campaign: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Campaign',
-      required: [true, 'A dontaion must belong to a campaign.'],
+      required: [true, 'A donation must belong to a campaign.'],
     },
     amount: {
       type: Number,

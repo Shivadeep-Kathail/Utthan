@@ -3,12 +3,12 @@ const User = require('../models/userModel');
 const filterObject = require('../utils/filterObj');
 
 exports.getMe = async (req, res, next) => {
-  const user = await User.findOne({
-    _id: req.user.id,
-    isDeleted: false,
-  }).select('-__v -createdAt -deletedAt -deletedBy');
+  const user = await User.findById(req.user.id);
   if (!user) {
     return next(new AppError('User not found!', 404));
+  }
+  if (user.isDeleted) {
+    return next(new AppError('User is no longer in use.', 404));
   }
 
   res.status(200).json({

@@ -4,6 +4,7 @@ const AppError = require('../utils/appError');
 const User = require('../models/userModel');
 
 exports.protect = async (req, res, next) => {
+  console.log('Protect middleware hit');
   let token;
   if (
     req.headers.authorization &&
