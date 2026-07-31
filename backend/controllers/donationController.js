@@ -95,7 +95,7 @@ exports.getSingleDonation = async (req, res, next) => {
   const donation = await Donation.findById(req.params.id)
     .populate({
       path: 'campaign',
-      select: 'title creator status isDeleted',
+      select: 'title creator status',
       populate: {
         path: 'creator',
         select: 'name',
