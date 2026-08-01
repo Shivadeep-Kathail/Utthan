@@ -41,6 +41,9 @@ const donationSchema = new mongoose.Schema(
     razorpaySignature: {
       type: String,
     },
+    paidAt: {
+      type: Date,
+    },
     receipt: {
       type: String,
       trim: true,

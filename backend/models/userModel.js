@@ -42,7 +42,6 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: Number,
-      required: true,
       validate: {
         validator: function (el) {
           return el.length == 10;
