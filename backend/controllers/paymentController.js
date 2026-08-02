@@ -78,25 +78,95 @@ exports.verifyPayment = async (req, res, next) => {
     return next(new AppError('Invalid payment signature.', 400));
   }
 
-  donation.status = 'captured';
-  donation.razorpayPaymentId = payment_id;
-  donation.paidAt = new Date();
-  await donation.save();
-
-  const campaign = await Campaign.findByIdAndUpdate(
-    donation.campaign,
-    { $inc: { amountRaised: donation.amount } },
-    { new: true },
-  );
-  if (!campaign) {
-    return next(new AppError('Campaign not found.', 404));
-  }
-
   res.status(200).json({
     status: 'success',
     message: 'Payment Verified successfully',
     data: {
       donation,
     },
+  });
+};
+
+exports.webhook = async (req, res, next) => {
+  const rawBody = req.body;
+  const webhookSignature = req.get('X-Razorpay-Signature');
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+  const expectedSignature = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+  if (expectedSignature !== webhookSignature) {
+    return next(new AppError('Invalid webhook signature.', 400));
+  }
+
+  const webhookBody = JSON.parse(rawBody.toString('utf8'));
+
+  const event = webhookBody.event;
+  const payment = webhookBody.payload?.payment?.entity;
+  if (!payment) {
+    return next(new AppError('Invalid webhook payload.', 400));
+  }
+
+  const { id: razorpayPaymentId, order_id: razorpayOrderId } = payment;
+  if (!razorpayPaymentId || !razorpayOrderId) {
+    return next(
+      new AppError('Missing razorpayOrderId or razorpayPaymentId.', 400),
+    );
+  }
+
+  const donation = await Donation.findOne({ razorpayOrderId });
+  if (!donation) {
+    return next(new AppError('Donation not found.', 404));
+  }
+  if (donation.status === 'captured' || donation.status === 'failed') {
+    return res.status(200).json({
+      status: 'success',
+    });
+  }
+
+  switch (event) {
+    case 'payment.captured': {
+      if (donation.status !== 'created') {
+        return res.status(200).json({
+          status: 'ignored',
+        });
+      }
+      donation.status = 'captured';
+      donation.razorpayPaymentId = razorpayPaymentId;
+      donation.paidAt = new Date();
+      await donation.save();
+
+      const campaign = await Campaign.findByIdAndUpdate(
+        donation.campaign,
+        {
+          $inc: {
+            amountRaised: donation.amount,
+          },
+        },
+        { new: true },
+      );
+      if (!campaign) {
+        return next(new AppError('Campaign not found.', 404));
+      }
+      break;
+    }
+
+    case 'payment.failed': {
+      donation.status = 'failed';
+      donation.razorpayPaymentId = razorpayPaymentId;
+      await donation.save();
+      break;
+    }
+
+    default:
+      return res.status(200).json({
+        status: 'ignored',
+      });
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Payment signature verified successfully.',
   });
 };

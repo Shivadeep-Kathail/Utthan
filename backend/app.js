@@ -7,8 +7,14 @@ const adminCampaignRouter = require('./routes/adminCampaignRoutes');
 const adminUserRoutes = require('./routes/adminUserRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
+app.use(
+  '/api/webhooks',
+  express.raw({ type: 'application/json' }),
+  webhookRoutes,
+);
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
