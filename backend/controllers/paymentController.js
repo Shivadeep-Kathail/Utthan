@@ -119,9 +119,9 @@ exports.webhook = async (req, res, next) => {
   if (!donation) {
     return next(new AppError('Donation not found.', 404));
   }
-  if (donation.status === 'captured' || donation.status === 'failed') {
+  if (donation.status !== 'created') {
     return res.status(200).json({
-      status: 'success',
+      status: 'ignored',
     });
   }
 
