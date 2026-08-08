@@ -10,8 +10,8 @@ const body = `{
     "payload": {
         "payment": {
             "entity": {
-                "id": "pay_test123456",
-                "order_id": "order_TLQKDN1sAjcMDv"
+                "id": "pay_test1234567",
+                "order_id": "order_TNN5Z5MGNGVZfv"
             }
         }
     }
