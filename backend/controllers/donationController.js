@@ -122,3 +122,35 @@ exports.getSingleDonation = async (req, res, next) => {
     },
   });
 };
+
+exports.viewDonations = async (req, res, next) => {
+  const campaign = await Campaign.findOne({
+    _id: req.params.campaignId,
+    isDeleted: false,
+  });
+  if (!campaign) {
+    return next(new AppError('Campaign not found.', 404));
+  }
+  if (!campaign.creator.equals(req.user.id) && req.user.role !== 'admin') {
+    return next(
+      new AppError(
+        'Only campaign creator or admin can view all donations of this campaign.',
+        403,
+      ),
+    );
+  }
+
+  const donations = await Donation.find({
+    campaign: campaign._id,
+  })
+    .select('amount status paidAt')
+    .populate('donor', 'name');
+
+  res.status(200).json({
+    status: 'success',
+    results: donations.length,
+    data: {
+      donations,
+    },
+  });
+};

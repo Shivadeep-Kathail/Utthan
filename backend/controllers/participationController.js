@@ -93,3 +93,33 @@ exports.leaveCampaign = async (req, res, next) => {
     message: 'Campaign left successfully',
   });
 };
+
+exports.viewParticipants = async (req, res, next) => {
+  const campaign = await Campaign.findOne({
+    _id: req.params.campaignId,
+    isDeleted: false,
+  });
+  if (!campaign) {
+    return next(new AppError('Campaign not found.', 404));
+  }
+  if (!campaign.creator.equals(req.user.id) && req.user.role !== 'admin') {
+    return next(
+      new AppError(
+        'Only the campaign creator or admin can view participants.',
+        403,
+      ),
+    );
+  }
+
+  const participants = await Participation.find({
+    campaign: campaign._id,
+  }).populate('participant', 'name');
+
+  res.status(200).json({
+    status: 'success',
+    result: participants.length,
+    data: {
+      participants,
+    },
+  });
+};
