@@ -87,14 +87,20 @@ exports.updatePassword = async (req, res, next) => {
 exports.forgotPassword = async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
   if (!user) {
-    return next(new AppError('No user found with this email!', 404));
+    return res.status(200).json({
+      status: 'success',
+      message:
+        'If an account exists with the provided email, a password reset link has been sent.',
+    });
   }
 
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
 
-  const resetURL = `${req.protocol}://${req.get('host')}/api/users/reset-password/${resetToken}`;
-  const message = `Forgot password? Submit a patch request with new password and passwordConfirm to: ${resetURL}.\n If you didn't forget your password, please ignore this email.`;
+  const resetURL = `${req.protocol}://${req.get(
+    'host',
+  )}/api/users/reset-password/${resetToken}`;
+  const message = `Forgot password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email.`;
 
   try {
     await sendEmail({
@@ -105,7 +111,8 @@ exports.forgotPassword = async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
-      message: 'Password reset token successfully sent to provided email',
+      message:
+        'If an account exists with the provided email, a password reset link has been sent.',
     });
   } catch (err) {
     console.log(err);
@@ -114,7 +121,7 @@ exports.forgotPassword = async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
 
     return next(
-      new AppError('Error sending reset token. Please try again later!', 500),
+      new AppError('Error sending reset email. Please try again later.', 500),
     );
   }
 };

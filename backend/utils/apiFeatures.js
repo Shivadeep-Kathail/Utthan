@@ -1,5 +1,3 @@
-const qs = require('qs');
-
 class ApiFeatures {
   constructor(query, queryString) {
     this.query = query;
@@ -7,7 +5,7 @@ class ApiFeatures {
   }
 
   filter() {
-    const queryObj = qs.parse({ ...this.queryString });
+    const queryObj = { ...this.queryString };
     const excludeFields = ['sort', 'limit', 'page', 'fields'];
     excludeFields.forEach((el) => delete queryObj[el]);
 
@@ -37,12 +35,12 @@ class ApiFeatures {
   }
 
   paginate() {
-    const page = Math.max(Number(this.queryString.page) || 1, 1);
+    this.page = Math.max(Number(this.queryString.page) || 1, 1);
     const limit = Math.min(
       Math.max(Number(this.queryString.limit) || 25, 1),
       100,
     );
-    const skip = (page - 1) * limit;
+    const skip = (this.page - 1) * limit;
     this.query = this.query.skip(skip).limit(limit);
     return this;
   }

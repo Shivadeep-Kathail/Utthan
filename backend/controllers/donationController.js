@@ -38,12 +38,6 @@ exports.createDonation = async (req, res, next) => {
     campaign: campaign._id,
   });
 
-  campaign.amountRaised += donation.amount;
-  if (campaign.amountRaised >= campaign.amountNeeded) {
-    campaign.status = 'closed';
-  }
-  await campaign.save();
-
   res.status(201).json({
     status: 'success',
     data: {

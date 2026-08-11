@@ -34,7 +34,10 @@ exports.updateMe = async (req, res, next) => {
     return next(new AppError('No valid fields provided for update.', 422));
   }
 
-  const user = await User.findOne({ _id: req.user.id, isDeleted: false });
+  const user = await User.findOne({
+    _id: req.user.id,
+    isDeleted: false,
+  });
   if (!user) {
     return next(new AppError('User not found.', 404));
   }
@@ -51,14 +54,17 @@ exports.updateMe = async (req, res, next) => {
 };
 
 exports.deleteMe = async (req, res, next) => {
-  const user = await User.findOne({ _id: req.user.id, isDeleted: false });
+  const user = await User.findOne({
+    _id: req.user.id,
+    isDeleted: false,
+  });
   if (!user) {
     return next(new AppError('User not found!', 404));
   }
   user.isDeleted = true;
   user.deletedAt = new Date();
   user.deletedBy = req.user.id;
-  await user.save();
+  await user.save({ validateBeforeSave: false });
 
   res.status(204).json({
     status: 'success',

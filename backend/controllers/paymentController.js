@@ -58,7 +58,9 @@ exports.createOrder = async (req, res, next) => {
 exports.verifyPayment = async (req, res, next) => {
   const { order_id, payment_id, signature } = req.body;
 
-  const donation = await Donation.findOne({ razorpayOrderId: order_id });
+  const donation = await Donation.findOne({
+    razorpayOrderId: order_id,
+  });
   if (!donation) {
     return next(new AppError('Donation not found.', 404));
   }
@@ -66,6 +68,9 @@ exports.verifyPayment = async (req, res, next) => {
     return res.status(200).json({
       status: 'success',
       message: 'Payment already verified.',
+      data: {
+        donation,
+      },
     });
   }
 
@@ -78,9 +83,31 @@ exports.verifyPayment = async (req, res, next) => {
     return next(new AppError('Invalid payment signature.', 400));
   }
 
+  donation.status = 'captured';
+  donation.razorpayPaymentId = payment_id;
+  donation.paidAt = new Date();
+  await donation.save();
+
+  const campaign = await Campaign.findByIdAndUpdate(
+    donation.campaign,
+    {
+      $inc: {
+        amountRaised: donation.amount,
+      },
+    },
+    { new: true },
+  );
+  if (!campaign) {
+    return next(new AppError('Campaign not found.', 404));
+  }
+  if (campaign.amountRaised >= campaign.amountNeeded) {
+    campaign.status = 'closed';
+    await campaign.save();
+  }
+
   res.status(200).json({
     status: 'success',
-    message: 'Payment Verified successfully',
+    message: 'Payment verified successfully.',
     data: {
       donation,
     },
@@ -97,41 +124,46 @@ exports.webhook = async (req, res, next) => {
     .update(rawBody)
     .digest('hex');
   if (expectedSignature !== webhookSignature) {
-    return next(new AppError('Invalid webhook signature.', 400));
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Invalid webhook signature.',
+    });
   }
 
   const webhookBody = JSON.parse(rawBody.toString('utf8'));
-
   const event = webhookBody.event;
   const payment = webhookBody.payload?.payment?.entity;
   if (!payment) {
-    return next(new AppError('Invalid webhook payload.', 400));
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Invalid webhook payload.',
+    });
   }
 
   const { id: razorpayPaymentId, order_id: razorpayOrderId } = payment;
   if (!razorpayPaymentId || !razorpayOrderId) {
-    return next(
-      new AppError('Missing razorpayOrderId or razorpayPaymentId.', 400),
-    );
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Missing payment or order ID.',
+    });
   }
 
   const donation = await Donation.findOne({ razorpayOrderId });
   if (!donation) {
-    return next(new AppError('Donation not found.', 404));
+    return res.status(200).json({
+      status: 'ignored',
+      message: 'Donation not found.',
+    });
   }
   if (donation.status !== 'created') {
     return res.status(200).json({
       status: 'ignored',
+      message: 'Donation already processed.',
     });
   }
 
   switch (event) {
     case 'payment.captured': {
-      if (donation.status !== 'created') {
-        return res.status(200).json({
-          status: 'ignored',
-        });
-      }
       donation.status = 'captured';
       donation.razorpayPaymentId = razorpayPaymentId;
       donation.paidAt = new Date();
@@ -149,6 +181,10 @@ exports.webhook = async (req, res, next) => {
       if (!campaign) {
         return next(new AppError('Campaign not found.', 404));
       }
+      if (campaign.amountRaised >= campaign.amountNeeded) {
+        campaign.status = 'closed';
+        await campaign.save();
+      }
       break;
     }
 
@@ -162,11 +198,12 @@ exports.webhook = async (req, res, next) => {
     default:
       return res.status(200).json({
         status: 'ignored',
+        message: 'Event not handled.',
       });
   }
 
   res.status(200).json({
     status: 'success',
-    message: 'Payment signature verified successfully.',
+    message: 'Webhook processed successfully.',
   });
 };

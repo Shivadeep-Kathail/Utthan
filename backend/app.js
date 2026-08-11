@@ -26,6 +26,8 @@ app.get('/', (req, res) => {
   });
 });
 
+app.set('query parser', 'extended');
+
 app.use('/api/users', userRouter);
 app.use('/api/campaign', campaignRouter);
 app.use('/api/donations', donationRouter);
