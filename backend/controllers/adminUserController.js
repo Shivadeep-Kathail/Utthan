@@ -74,7 +74,6 @@ exports.changeUserRole = async (req, res, next) => {
   if (!role) {
     return next(new AppError('Please provide a role.', 400));
   }
-
   if (user.id === req.user.id) {
     return next(new AppError('You cannot change your own role.', 400));
   }

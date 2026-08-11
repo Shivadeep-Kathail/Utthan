@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+const nodemailer = require('nodemailer');
 
 exports.sendEmail = async (options) => {
   const transporter = nodemailer.createTransport({
@@ -12,7 +12,7 @@ exports.sendEmail = async (options) => {
   });
 
   const mailOptions = {
-    from: "Utthan <utthansupport@gmail.com",
+    from: 'Utthan <utthansupport@gmail.com>',
     to: options.email,
     subject: options.subject,
     text: options.message,

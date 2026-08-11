@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema(
       type: Number,
       validate: {
         validator: function (el) {
-          return el.length == 10;
+          return String(el).length === 10;
         },
         message: 'Invalid mobile number',
       },
