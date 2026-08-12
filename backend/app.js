@@ -1,6 +1,8 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 
+const AppError = require('./utils/appError');
+const globalErrorHandler = require('./controllers/errorController');
 const userRouter = require('./routes/userRoutes');
 const campaignRouter = require('./routes/campaignRoutes');
 const adminCampaignRouter = require('./routes/adminCampaignRoutes');
@@ -35,5 +37,10 @@ app.use('/api/payments', paymentRouter);
 app.use('/api/admin/campaigns', adminCampaignRouter);
 app.use('/api/admin/users', adminUserRouter);
 app.use('/api/goods-donations', goodsDonationRouter);
+app.all('/*splat', (req, res, next) => {
+  next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
+});
+
+app.use(globalErrorHandler);
 
 module.exports = app;

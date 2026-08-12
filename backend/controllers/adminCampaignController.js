@@ -33,6 +33,7 @@ exports.getAllActiveCampaigns = getCampaignsByQuery({
   status: 'active',
   isDeleted: false,
 });
+
 exports.getCampaign = async (req, res, next) => {
   const campaign = await Campaign.findById(req.params.id).populate(
     'creator',
