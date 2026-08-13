@@ -209,18 +209,45 @@ exports.updateGoodsDonation = async (req, res, next) => {
     return next(new AppError('This campaign is not accepting donations.', 400));
   }
 
-  const validationError = await validateDonationItems(
-    campaign,
-    items,
-    donation._id,
-  );
-  if (validationError) {
-    return next(new AppError(validationError, 400));
+  if (address !== undefined) {
+    if (!address.trim()) {
+      return next(new AppError('Address cannot be empty.', 400));
+    }
+
+    donation.address = address.trim();
   }
 
-  donation.address = address;
-  donation.items = items;
-  donation.preferredCollectionDate = preferredCollectionDate;
+  if (items !== undefined) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return next(new AppError('Items must contain at least one item.', 400));
+    }
+
+    const validationError = await validateDonationItems(
+      campaign,
+      items,
+      donation._id,
+    );
+    if (validationError) {
+      return next(new AppError(validationError, 400));
+    }
+
+    donation.items = items;
+  }
+
+  if (preferredCollectionDate !== undefined) {
+    const date = new Date(preferredCollectionDate);
+    if (isNaN(date.getTime()) || date <= new Date()) {
+      return next(
+        new AppError(
+          'Preferred collection date must be a valid future date.',
+          400,
+        ),
+      );
+    }
+
+    donation.preferredCollectionDate = date;
+  }
+
   await donation.save();
 
   res.status(200).json({
