@@ -4,7 +4,7 @@ const AppError = require('../utils/appError');
 
 exports.joinCampaign = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {
@@ -57,7 +57,7 @@ exports.joinCampaign = async (req, res, next) => {
 
 exports.leaveCampaign = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {
@@ -96,7 +96,7 @@ exports.leaveCampaign = async (req, res, next) => {
 
 exports.viewParticipants = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {

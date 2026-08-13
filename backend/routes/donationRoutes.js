@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 router.use(auth.protect);
 
-router.post('/:campaignId', donationController.createDonation);
+router.post('/:slug', donationController.createDonation);
 router.get('/me', donationController.getMyDonations);
 
 router.get(

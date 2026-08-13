@@ -16,31 +16,31 @@ router.get('/my-campaigns', auth.protect, campaignController.getMyCampaigns);
 
 // Participation Routes
 router.post(
-  '/:campaignId/join',
+  '/:slug/join',
   auth.protect,
   participationController.joinCampaign,
 );
 router.delete(
-  '/:campaignId/leave',
+  '/:slug/leave',
   auth.protect,
   participationController.leaveCampaign,
 );
 router.get(
-  '/:campaignId/participants',
+  '/:slug/participants',
   auth.protect,
   participationController.viewParticipants,
 );
 
 // Donation Routes
 router.get(
-  '/:campaignId/donations',
+  '/:slug/donations',
   auth.protect,
   donationController.viewDonations,
 );
 
 // Campaign Management Routes
 router
-  .route('/:id')
+  .route('/:slug')
   .get(campaignController.getCampaign)
   .patch(auth.protect, campaignController.updateCampaign)
   .delete(auth.protect, campaignController.deleteCampaign);

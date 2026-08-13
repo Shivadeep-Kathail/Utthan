@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
 
 const campaignSchema = new mongoose.Schema(
   {
@@ -7,6 +8,12 @@ const campaignSchema = new mongoose.Schema(
       required: [true, 'Please enter Campaign name.'],
       minlength: [10, 'Campaign title must be at least 10 characters'],
       maxlength: [100, 'Campaign title cannot exceed 100 characters'],
+      trim: true,
+    },
+    slug: {
+      type: String,
+      unique: true,
+      lowercase: true,
       trim: true,
     },
     creator: {
@@ -171,6 +178,19 @@ campaignSchema.index({ category: 1 });
 campaignSchema.index({ status: 1 });
 campaignSchema.index({ type: 1 });
 campaignSchema.index({ createdAt: -1 });
+
+campaignSchema.pre('save', async function () {
+  if (!this.isModified('title')) return;
+
+  const baseSlug = slugify(this.title, { lower: true, strict: true });
+  let slug = baseSlug;
+  let counter = 2;
+  while (await this.constructor.findOne({ slug, _id: { $ne: this._id } })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+  this.slug = slug;
+});
 
 campaignSchema.virtual('fundingProgress').get(function () {
   if (this.type !== 'fundraising') return null;

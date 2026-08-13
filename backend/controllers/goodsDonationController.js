@@ -65,7 +65,7 @@ exports.createGoodsDonation = async (req, res, next) => {
   const { address, items, preferredCollectionDate } = req.body;
 
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {
@@ -150,7 +150,7 @@ exports.getGoodsDonation = async (req, res, next) => {
 
 exports.viewCampaignGoodsDonations = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {

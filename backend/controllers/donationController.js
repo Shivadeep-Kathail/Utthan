@@ -14,7 +14,7 @@ exports.createDonation = async (req, res, next) => {
   }
 
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {
@@ -119,7 +119,7 @@ exports.getSingleDonation = async (req, res, next) => {
 
 exports.viewDonations = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.campaignId,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {

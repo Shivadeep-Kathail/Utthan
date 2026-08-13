@@ -22,7 +22,7 @@ exports.createCampaign = async (req, res, next) => {
 
 exports.getCampaign = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.id,
+    slug: req.params.slug,
     isDeleted: false,
   }).populate('creator', 'name email');
   if (!campaign) {
@@ -78,7 +78,7 @@ exports.getAllCampaigns = async (req, res, next) => {
 
 exports.updateCampaign = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.id,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {
@@ -119,7 +119,7 @@ exports.updateCampaign = async (req, res, next) => {
 
 exports.deleteCampaign = async (req, res, next) => {
   const campaign = await Campaign.findOne({
-    _id: req.params.id,
+    slug: req.params.slug,
     isDeleted: false,
   });
   if (!campaign) {

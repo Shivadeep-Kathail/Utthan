@@ -7,12 +7,12 @@ const router = express.Router();
 router.use(auth.protect);
 
 router.post(
-  '/campaigns/:campaignId',
+  '/campaigns/:slug',
   goodsDonationController.createGoodsDonation,
 );
 router.get('/my', goodsDonationController.getMyGoodsDonations);
 router.get(
-  '/campaigns/:campaignId',
+  '/campaigns/:slug',
   goodsDonationController.viewCampaignGoodsDonations,
 );
 router.get('/:id', goodsDonationController.getGoodsDonation);
