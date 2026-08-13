@@ -6,10 +6,7 @@ const router = express.Router();
 
 router.use(auth.protect);
 
-router.post(
-  '/campaigns/:slug',
-  goodsDonationController.createGoodsDonation,
-);
+router.post('/campaigns/:slug', goodsDonationController.createGoodsDonation);
 router.get('/my', goodsDonationController.getMyGoodsDonations);
 router.get(
   '/campaigns/:slug',
