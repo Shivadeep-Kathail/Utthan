@@ -180,7 +180,7 @@ campaignSchema.index({ type: 1 });
 campaignSchema.index({ createdAt: -1 });
 
 campaignSchema.pre('save', async function () {
-  if (!this.isModified('title')) return;
+  if (!this.isNew) return;
 
   const baseSlug = slugify(this.title, { lower: true, strict: true });
   let slug = baseSlug;

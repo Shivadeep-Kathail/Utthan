@@ -102,11 +102,21 @@ async function runTests() {
     check('Donation.campaign stores ObjectId (_id)', donation.campaign.toString() === c1._id.toString());
     check('Donation.campaign is NOT the slug', donation.campaign.toString() !== c1.slug);
 
-    // --- Test 6: Title update regenerates slug ---
-    console.log('\n6. Title Update Regenerates Slug');
+    // --- Test 6: Title update does NOT change slug ---
+    console.log('\n6. Title Update Does NOT Change Slug');
+    const originalSlug = c1.slug;
     c1.title = 'Test Slug Verify Updated Campaign Title Here';
     await c1.save();
-    check('Slug updated after title change', c1.slug === 'test-slug-verify-updated-campaign-title-here');
+    check('Slug unchanged after title edit', c1.slug === originalSlug);
+
+    console.log('\n6b. Three Consecutive Title Edits');
+    c1.title = 'Test Slug Verify Edit Two';
+    await c1.save();
+    c1.title = 'Test Slug Verify Edit Three';
+    await c1.save();
+    c1.title = 'Test Slug Verify Edit Four';
+    await c1.save();
+    check('Slug unchanged after multiple title edits', c1.slug === originalSlug);
 
     // --- Test 7: Non-title save does not change slug ---
     console.log('\n7. Non-Title Save Preserves Slug');
