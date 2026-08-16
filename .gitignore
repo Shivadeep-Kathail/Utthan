@@ -2,5 +2,12 @@
 backend/node_modules
 backend/config.env
 
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/.env
+frontend/.env.local
+
 # macOS
 .DS_Store
