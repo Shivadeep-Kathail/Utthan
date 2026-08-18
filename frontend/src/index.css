@@ -279,3 +279,439 @@
         transition: background-color 0.3s ease, color 0.3s ease;
     }
 }
+
+/* ================================================================
+   HOMEPAGE — Hero, StatsBar, CampaignTypes
+   Uses existing design tokens only. No new CSS variables.
+   ================================================================ */
+
+/* ── Keyframes ── */
+@keyframes hero-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes hero-photo-reveal {
+    from {
+        opacity: 0;
+        transform: scale(1.04);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes stat-count-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── Hero section ── */
+.hero-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    align-items: center;
+    padding: 2rem 0 3rem;
+}
+
+@media (min-width: 768px) {
+    .hero-section {
+        grid-template-columns: 55% 1fr;
+        gap: 3rem;
+        padding: 3.5rem 0 4rem;
+    }
+}
+
+.hero-text {
+    animation: hero-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-eyebrow {
+    display: inline-block;
+    font-size: var(--text-metadata);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-4xl);
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+}
+
+.hero-heading {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+    margin-bottom: 1.25rem;
+}
+
+.hero-heading-accent {
+    color: var(--primary);
+    font-weight: 400;
+    font-style: italic;
+}
+
+.hero-subhead {
+    font-size: var(--text-body);
+    line-height: 1.65;
+    color: var(--muted-foreground);
+    max-width: 30rem;
+    margin-bottom: 2rem;
+}
+
+.hero-ctas {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.hero-cta-primary {
+    padding-left: 1.75rem !important;
+    padding-right: 1.75rem !important;
+    height: 2.75rem !important;
+    font-size: 0.95rem !important;
+    border-radius: var(--radius-xl) !important;
+}
+
+.hero-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-muted);
+    font-weight: 600;
+    color: var(--foreground);
+    text-decoration: none;
+    transition: color 0.2s ease, gap 0.2s ease;
+}
+
+.hero-cta-secondary:hover {
+    color: var(--primary);
+    gap: 0.625rem;
+}
+
+.hero-cta-arrow {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.hero-cta-secondary:hover .hero-cta-arrow {
+    transform: translateX(2px);
+}
+
+/* Photo column */
+.hero-photo-wrapper {
+    position: relative;
+    animation: hero-photo-reveal 0.9s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    order: -1;
+}
+
+@media (min-width: 768px) {
+    .hero-photo-wrapper {
+        order: 0;
+    }
+}
+
+.hero-photo {
+    width: 100%;
+    height: auto;
+    min-height: 280px;
+    max-height: 480px;
+    object-fit: cover;
+    border-radius: var(--radius-3xl) var(--radius-sm) var(--radius-3xl) var(--radius-sm);
+    box-shadow:
+        0 8px 32px color-mix(in oklch, var(--foreground) 8%, transparent),
+        0 2px 8px color-mix(in oklch, var(--foreground) 4%, transparent);
+}
+
+@media (min-width: 768px) {
+    .hero-photo {
+        min-height: 360px;
+        max-height: 520px;
+    }
+}
+
+/* ── Stats bar ── */
+.stats-bar {
+    padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklch, var(--muted) 40%, transparent);
+}
+
+.stats-bar-inner {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .stats-bar-inner {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+    }
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: stat-count-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stat-item:nth-child(1) { animation-delay: 0.1s; }
+.stat-item:nth-child(2) { animation-delay: 0.2s; }
+.stat-item:nth-child(3) { animation-delay: 0.3s; }
+.stat-item:nth-child(4) { animation-delay: 0.4s; }
+
+@media (min-width: 640px) {
+    .stat-item + .stat-item {
+        border-left: 1px solid var(--border);
+    }
+}
+
+.stat-value {
+    font-family: var(--font-heading);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--primary);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: var(--text-metadata);
+    font-weight: 500;
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+}
+
+/* ── Campaign types section ── */
+.campaign-types-section {
+    padding: 3.5rem 0 2rem;
+}
+
+.campaign-types-header {
+    margin-bottom: 2rem;
+}
+
+.campaign-types-eyebrow {
+    display: inline-block;
+    font-size: var(--text-metadata);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.campaign-types-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-section-heading);
+    font-weight: 700;
+    line-height: var(--leading-section-heading);
+    color: var(--foreground);
+}
+
+/* Grid: on mobile single column, on desktop 2-col with first item spanning 2 rows */
+.campaign-types-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .campaign-types-grid {
+        grid-template-columns: 1.15fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 1.25rem;
+    }
+}
+
+/* Individual campaign panel */
+.campaign-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-2xl);
+    min-height: 220px;
+    display: flex;
+    align-items: flex-end;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.3s ease;
+}
+
+.campaign-panel:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+/* First panel (Fundraising) spans 2 rows on desktop */
+@media (min-width: 768px) {
+    .campaign-panel:first-child {
+        grid-row: 1 / 3;
+        min-height: 100%;
+    }
+}
+
+.campaign-panel-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.campaign-panel:hover .campaign-panel-img {
+    transform: scale(1.04);
+}
+
+/*
+ * Gradient scrim for text legibility over photos.
+ * Neutral dark gradient — no color, just contrast for white text.
+ * Color identity is handled by the per-panel ::before wash (below).
+ */
+.campaign-panel-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(
+        to top,
+        oklch(0.08 0.005 60 / 0.88) 0%,
+        oklch(0.08 0.005 60 / 0.55) 40%,
+        oklch(0.08 0.005 60 / 0.08) 75%,
+        transparent 100%
+    );
+}
+
+/*
+ * Per-panel color wash — sits between the photo and the dark scrim.
+ * Uses mix-blend-mode: color to tint the photo's hue while preserving
+ * its original contrast and luminance (faces, detail stay clear).
+ * Concentrated at the bottom (where the scrim already darkens) and
+ * fades to transparent toward the top.
+ */
+.campaign-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    mix-blend-mode: color;
+    pointer-events: none;
+}
+
+/* Amber-gold wash */
+.campaign-panel--amber::before {
+    background: linear-gradient(
+        to top,
+        oklch(0.60 0.20 62 / 0.30) 0%,
+        oklch(0.60 0.20 62 / 0.12) 45%,
+        transparent 75%
+    );
+}
+
+/* Terracotta wash */
+.campaign-panel--terracotta::before {
+    background: linear-gradient(
+        to top,
+        oklch(0.55 0.18 42 / 0.30) 0%,
+        oklch(0.55 0.18 42 / 0.12) 45%,
+        transparent 75%
+    );
+}
+
+/* Sage-green wash */
+.campaign-panel--sage::before {
+    background: linear-gradient(
+        to top,
+        oklch(0.55 0.16 152 / 0.30) 0%,
+        oklch(0.55 0.16 152 / 0.12) 45%,
+        transparent 75%
+    );
+}
+
+/* Panel content (text) */
+.campaign-panel-content {
+    position: relative;
+    z-index: 3;
+    padding: 1.5rem;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .campaign-panel:first-child .campaign-panel-content {
+        padding: 2rem;
+    }
+}
+
+.campaign-panel-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-card-heading);
+    font-weight: 700;
+    color: oklch(0.97 0.005 80);
+    margin-bottom: 0.375rem;
+}
+
+@media (min-width: 768px) {
+    .campaign-panel:first-child .campaign-panel-title {
+        font-size: var(--text-section-heading);
+    }
+}
+
+.campaign-panel-desc {
+    font-size: var(--text-muted);
+    line-height: 1.5;
+    color: oklch(0.85 0.01 80);
+    max-width: 28rem;
+    margin-bottom: 1rem;
+}
+
+.campaign-panel-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-muted);
+    font-weight: 600;
+    color: oklch(0.97 0.005 80);
+    text-decoration: none;
+    transition: gap 0.2s ease, opacity 0.2s ease;
+}
+
+.campaign-panel-link:hover {
+    gap: 0.625rem;
+    opacity: 0.85;
+}
+
+/* Subtle warm border tints per panel variant (visible in light mode, softer in dark) */
+.campaign-panel--amber {
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 25%, transparent);
+}
+
+.campaign-panel--terracotta {
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 25%, transparent);
+}
+
+.campaign-panel--sage {
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--success) 25%, transparent);
+}
