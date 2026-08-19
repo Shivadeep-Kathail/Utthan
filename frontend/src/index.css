@@ -130,9 +130,9 @@
     --muted: oklch(0.94 0.01 80);
     --muted-foreground: oklch(0.43 0.02 60);
 
-    /* Accent — warm terracotta tint (hover/expanded states) */
-    --accent: oklch(0.93 0.025 55);
-    --accent-foreground: oklch(0.22 0.03 55);
+    /* Accent — warm burgundy/maroon (hover/expanded states) */
+    --accent: oklch(0.93 0.03 350);
+    --accent-foreground: oklch(0.22 0.06 350);
 
     /* Destructive — warm red */
     --destructive: oklch(0.50 0.22 27);
@@ -176,8 +176,8 @@
     --sidebar-foreground: oklch(0.16 0.02 55);
     --sidebar-primary: oklch(0.47 0.135 62);
     --sidebar-primary-foreground: oklch(0.985 0.004 85);
-    --sidebar-accent: oklch(0.93 0.02 65);
-    --sidebar-accent-foreground: oklch(0.22 0.03 55);
+    --sidebar-accent: oklch(0.93 0.03 350);
+    --sidebar-accent-foreground: oklch(0.22 0.06 350);
     --sidebar-border: oklch(0.88 0.02 75);
     --sidebar-ring: oklch(0.47 0.135 62);
 }
@@ -214,9 +214,9 @@
     --muted: oklch(0.26 0.015 55);
     --muted-foreground: oklch(0.65 0.02 70);
 
-    /* Accent */
-    --accent: oklch(0.26 0.025 55);
-    --accent-foreground: oklch(0.93 0.01 80);
+    /* Accent — warm burgundy/maroon */
+    --accent: oklch(0.26 0.04 350);
+    --accent-foreground: oklch(0.93 0.02 350);
 
     /* Destructive */
     --destructive: oklch(0.65 0.2 25);
@@ -258,8 +258,8 @@
     --sidebar-foreground: oklch(0.93 0.01 80);
     --sidebar-primary: oklch(0.73 0.14 68);
     --sidebar-primary-foreground: oklch(0.16 0.015 55);
-    --sidebar-accent: oklch(0.26 0.02 55);
-    --sidebar-accent-foreground: oklch(0.93 0.01 80);
+    --sidebar-accent: oklch(0.26 0.04 350);
+    --sidebar-accent-foreground: oklch(0.93 0.02 350);
     --sidebar-border: oklch(0.32 0.02 55);
     --sidebar-ring: oklch(0.73 0.14 68);
 }
@@ -556,6 +556,7 @@
     min-height: 220px;
     display: flex;
     align-items: flex-end;
+    border-top: 3px solid transparent;
     transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
                 box-shadow 0.3s ease;
 }
@@ -631,12 +632,12 @@
     );
 }
 
-/* Terracotta wash */
-.campaign-panel--terracotta::before {
+/* Burgundy/maroon wash */
+.campaign-panel--burgundy::before {
     background: linear-gradient(
         to top,
-        oklch(0.55 0.18 42 / 0.30) 0%,
-        oklch(0.55 0.18 42 / 0.12) 45%,
+        oklch(0.45 0.18 350 / 0.30) 0%,
+        oklch(0.45 0.18 350 / 0.12) 45%,
         transparent 75%
     );
 }
@@ -703,15 +704,25 @@
     opacity: 0.85;
 }
 
-/* Subtle warm border tints per panel variant (visible in light mode, softer in dark) */
+/* Per-panel color identity — solid top border + colored CTA link text.
+   These sit outside the photo so they're always unambiguous. */
 .campaign-panel--amber {
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 25%, transparent);
+    border-top-color: var(--primary);
+}
+.campaign-panel--amber .campaign-panel-link {
+    color: oklch(0.82 0.12 62);
 }
 
-.campaign-panel--terracotta {
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 25%, transparent);
+.campaign-panel--burgundy {
+    border-top-color: oklch(0.40 0.18 350);
+}
+.campaign-panel--burgundy .campaign-panel-link {
+    color: oklch(0.78 0.12 350);
 }
 
 .campaign-panel--sage {
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--success) 25%, transparent);
+    border-top-color: var(--success);
+}
+.campaign-panel--sage .campaign-panel-link {
+    color: oklch(0.78 0.12 152);
 }

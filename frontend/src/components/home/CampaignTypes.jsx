@@ -35,7 +35,7 @@ const CAMPAIGNS = [
     to: '/campaigns?type=participation',
     image: volunteersImg,
     imageAlt: 'Volunteers with cleaning equipment smiling outdoors',
-    tintClass: 'campaign-panel--terracotta',
+    tintClass: 'campaign-panel--burgundy',
   },
   {
     id: 'goods-donation',
