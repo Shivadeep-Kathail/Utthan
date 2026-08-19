@@ -1,30 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon, LogOut } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
   { to: '/campaigns', label: 'Discover' },
 ];
 
-const AUTH_LINKS = [
-  { to: '/login', label: 'Log in', variant: 'ghost' },
-  { to: '/signup', label: 'Sign up', variant: 'default' },
-];
-
-const USER_LINKS = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/admin', label: 'Admin' },
-];
-
 /**
- * Responsive navbar with text wordmark, navigation, and dark mode toggle.
- * No auth-conditional visibility yet — all links shown.
- * Phase 2 will add AuthContext to conditionally show/hide links.
+ * Responsive navbar with auth-conditional rendering.
+ *
+ * Logged out: NAV_LINKS + Login/Signup
+ * Logged in:  NAV_LINKS + Dashboard + user greeting + Logout
+ * Admin/Mod:  Also shows Admin link
  */
 function Navbar() {
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -55,7 +49,21 @@ function Navbar() {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  const allNavLinks = [...NAV_LINKS, ...USER_LINKS];
+  const handleLogout = async () => {
+    closeMobileMenu();
+    await logout();
+  };
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
+
+  // Build navigation links based on auth state
+  const authedNavLinks = [
+    ...NAV_LINKS,
+    { to: '/dashboard', label: 'Dashboard' },
+    ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
+  ];
+
+  const navLinks = isAuthenticated ? authedNavLinks : NAV_LINKS;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
@@ -72,9 +80,9 @@ function Navbar() {
           Utthan
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop nav links */}
         <div className="hidden items-center gap-1 md:flex">
-          {allNavLinks.map((link) => (
+          {navLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
@@ -102,15 +110,38 @@ function Navbar() {
           >
             {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </Button>
-          {AUTH_LINKS.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={cn(buttonVariants({ variant: link.variant, size: 'sm' }))}
-            >
-              {link.label}
-            </Link>
-          ))}
+
+          {!isLoading && isAuthenticated ? (
+            <>
+              <span className="text-sm text-muted-foreground">
+                {user?.name?.split(' ')[0]}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="gap-1.5 text-muted-foreground"
+              >
+                <LogOut className="size-3.5" />
+                Log out
+              </Button>
+            </>
+          ) : !isLoading ? (
+            <>
+              <Link
+                to="/login"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+              >
+                Log in
+              </Link>
+              <Link
+                to="/signup"
+                className={cn(buttonVariants({ variant: 'default', size: 'sm' }))}
+              >
+                Sign up
+              </Link>
+            </>
+          ) : null}
         </div>
 
         {/* Mobile right section */}
@@ -143,7 +174,7 @@ function Navbar() {
       {mobileMenuOpen && (
         <div className="border-t border-border/50 bg-background/95 backdrop-blur-md md:hidden">
           <div className="mx-auto max-w-7xl space-y-1 px-4 pb-4 pt-2">
-            {allNavLinks.map((link) => (
+            {navLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -160,20 +191,47 @@ function Navbar() {
                 {link.label}
               </NavLink>
             ))}
+
             <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
-              {AUTH_LINKS.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={closeMobileMenu}
-                  className={cn(
-                    buttonVariants({ variant: link.variant, size: 'sm' }),
-                    'w-full justify-center',
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {!isLoading && isAuthenticated ? (
+                <>
+                  <span className="px-3 text-sm text-muted-foreground">
+                    Signed in as <span className="font-medium text-foreground">{user?.name}</span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="w-full justify-start gap-1.5 text-muted-foreground"
+                  >
+                    <LogOut className="size-3.5" />
+                    Log out
+                  </Button>
+                </>
+              ) : !isLoading ? (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={closeMobileMenu}
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full justify-center',
+                    )}
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/signup"
+                    onClick={closeMobileMenu}
+                    className={cn(
+                      buttonVariants({ variant: 'default', size: 'sm' }),
+                      'w-full justify-center',
+                    )}
+                  >
+                    Sign up
+                  </Link>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
