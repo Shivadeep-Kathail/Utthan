@@ -43,7 +43,7 @@ const CAMPAIGNS = [
     description:
       'Donate supplies — food, clothing, books — directly to those in need.',
     linkText: 'Donate goods',
-    to: '/campaigns?type=goods',
+    to: '/campaigns?type=goods-donation',
     image: foodBoxesImg,
     imageAlt: 'Volunteers assembling food boxes at a community drive',
     tintClass: 'campaign-panel--sage',

@@ -882,3 +882,820 @@
 .danger-zone .settings-card-title {
     color: var(--destructive);
 }
+
+/* ================================================================
+   CAMPAIGN CARD — shared component
+   Used on /campaigns grid and homepage Featured Campaigns.
+   ================================================================ */
+
+.campaign-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background: var(--card);
+    box-shadow:
+        0 1px 3px color-mix(in oklch, var(--foreground) 5%, transparent),
+        0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+    transition:
+        transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.3s ease;
+}
+
+.campaign-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 12px 32px color-mix(in oklch, var(--foreground) 10%, transparent),
+        0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+.campaign-card-link {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Image area */
+.campaign-card-img-wrapper {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: linear-gradient(
+        135deg,
+        var(--muted),
+        color-mix(in oklch, var(--border) 60%, var(--muted))
+    );
+}
+
+.campaign-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.campaign-card:hover .campaign-card-img {
+    transform: scale(1.05);
+}
+
+/* Type badge — overlaid on the image */
+.campaign-card-type-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-4xl);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.campaign-card-badge--fundraising {
+    background: color-mix(in oklch, var(--progress-fundraising) 85%, transparent);
+    color: white;
+}
+
+.campaign-card-badge--participation {
+    background: color-mix(in oklch, var(--progress-participation) 85%, transparent);
+    color: white;
+}
+
+.campaign-card-badge--goods {
+    background: color-mix(in oklch, var(--progress-goods) 85%, transparent);
+    color: white;
+}
+
+/* Card body */
+.campaign-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.125rem 1.25rem;
+    flex: 1;
+}
+
+.campaign-card-category {
+    font-size: var(--text-metadata);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--primary);
+}
+
+.campaign-card-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-card-heading);
+    font-weight: 600;
+    line-height: var(--leading-card-heading);
+    color: var(--foreground);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Progress bar */
+.campaign-card-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-top: auto;
+    padding-top: 0.375rem;
+}
+
+.campaign-card-progress-track {
+    height: 6px;
+    border-radius: var(--radius-4xl);
+    background: var(--muted);
+    overflow: hidden;
+}
+
+.campaign-card-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-4xl);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.campaign-card-progress-fill--fundraising {
+    background: var(--progress-fundraising);
+}
+
+.campaign-card-progress-fill--participation {
+    background: var(--progress-participation);
+}
+
+.campaign-card-progress-fill--goods-donation {
+    background: var(--progress-goods);
+}
+
+.campaign-card-progress-text {
+    font-size: var(--text-metadata);
+    color: var(--muted-foreground);
+}
+
+/* Location */
+.campaign-card-location {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-metadata);
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.campaign-card-location-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+}
+
+/* ================================================================
+   CAMPAIGNS PAGE — /campaigns
+   ================================================================ */
+
+.campaigns-page {
+    padding: 0.5rem 0 2rem;
+}
+
+.campaigns-page-header {
+    margin-bottom: 1.5rem;
+}
+
+.campaigns-page-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-page-title);
+    font-weight: 800;
+    line-height: var(--leading-page-title);
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+}
+
+.campaigns-page-subtitle {
+    font-size: var(--text-body);
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+}
+
+/* Controls bar (filters + sort) */
+.campaigns-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.campaigns-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+}
+
+.campaigns-filters-icon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
+}
+
+.campaigns-select-trigger {
+    min-width: 140px;
+}
+
+.campaigns-clear-filters {
+    font-size: var(--text-muted);
+    font-weight: 500;
+    color: var(--primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    transition: opacity 0.15s ease;
+}
+
+.campaigns-clear-filters:hover {
+    opacity: 0.7;
+}
+
+/* Campaign grid */
+.campaigns-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .campaigns-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .campaigns-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Pagination */
+.campaigns-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+.campaigns-pagination-info {
+    font-size: var(--text-muted);
+    font-weight: 500;
+    color: var(--muted-foreground);
+    min-width: 4rem;
+    text-align: center;
+}
+
+/* Empty state */
+.campaigns-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 40vh;
+    padding: 2rem;
+    text-align: center;
+}
+
+.campaigns-empty-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.campaigns-empty-icon {
+    width: 2rem;
+    height: 2rem;
+    color: var(--muted-foreground);
+}
+
+.campaigns-empty-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-card-heading);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.campaigns-empty-text {
+    font-size: var(--text-muted);
+    color: var(--muted-foreground);
+    max-width: 28rem;
+}
+
+/* ================================================================
+   CAMPAIGN DETAIL PAGE — /campaigns/:slug
+   ================================================================ */
+
+.detail-page {
+    padding-bottom: 3rem;
+}
+
+/* Back link */
+.detail-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-muted);
+    font-weight: 500;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    margin-bottom: 1.25rem;
+    transition: color 0.2s ease;
+}
+
+.detail-back-link:hover {
+    color: var(--primary);
+}
+
+/* Cover image */
+.detail-cover-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 21 / 9;
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: linear-gradient(
+        135deg,
+        var(--muted),
+        color-mix(in oklch, var(--border) 60%, var(--muted))
+    );
+}
+
+.detail-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.detail-cover-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        oklch(0.08 0.005 60 / 0.35) 0%,
+        transparent 50%
+    );
+}
+
+/* Two-column layout */
+.detail-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 768px) {
+    .detail-content {
+        grid-template-columns: 1fr 340px;
+        gap: 2.5rem;
+    }
+}
+
+/* ── Main column ── */
+.detail-main {
+    min-width: 0;
+}
+
+/* Badges */
+.detail-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.detail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-4xl);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+}
+
+.detail-badge--fundraising {
+    background: color-mix(in oklch, var(--progress-fundraising) 15%, transparent);
+    color: var(--progress-fundraising);
+}
+
+.detail-badge--participation {
+    background: color-mix(in oklch, var(--progress-participation) 15%, transparent);
+    color: var(--progress-participation);
+}
+
+.detail-badge--goods {
+    background: color-mix(in oklch, var(--progress-goods) 15%, transparent);
+    color: var(--progress-goods);
+}
+
+.detail-badge--category {
+    background: var(--muted);
+    color: var(--muted-foreground);
+}
+
+.detail-badge--status {
+    text-transform: capitalize;
+}
+
+.detail-badge--status-active {
+    background: color-mix(in oklch, var(--status-active) 15%, transparent);
+    color: var(--status-active);
+}
+
+.detail-badge--status-closed {
+    background: color-mix(in oklch, var(--status-closed) 15%, transparent);
+    color: var(--status-closed);
+}
+
+.detail-badge--status-pending {
+    background: color-mix(in oklch, var(--status-pending) 15%, transparent);
+    color: var(--status-pending);
+}
+
+.detail-badge--status-flagged {
+    background: color-mix(in oklch, var(--status-flagged) 15%, transparent);
+    color: var(--status-flagged);
+}
+
+.detail-badge--status-rejected {
+    background: color-mix(in oklch, var(--status-rejected) 15%, transparent);
+    color: var(--status-rejected);
+}
+
+/* Title */
+.detail-title {
+    font-family: var(--font-heading);
+    font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+    margin-bottom: 0.75rem;
+}
+
+/* Meta row */
+.detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-muted);
+    color: var(--muted-foreground);
+}
+
+/* Description */
+.detail-description {
+    margin-bottom: 2rem;
+}
+
+.detail-description p {
+    font-size: var(--text-body);
+    line-height: 1.7;
+    color: var(--foreground);
+    white-space: pre-line;
+}
+
+.detail-section-heading {
+    font-family: var(--font-heading);
+    font-size: var(--text-card-heading);
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: 1rem;
+}
+
+/* Type-specific section */
+.detail-type-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    border-radius: var(--radius-xl);
+    background: var(--card);
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+
+.detail-type-stats {
+    font-size: var(--text-muted);
+    color: var(--muted-foreground);
+    margin-top: 0.75rem;
+}
+
+.detail-type-stats strong {
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+/* Progress bars (shared across detail page) */
+.detail-progress-track {
+    height: 8px;
+    border-radius: var(--radius-4xl);
+    background: var(--muted);
+    overflow: hidden;
+}
+
+.detail-progress-track--large {
+    height: 12px;
+}
+
+.detail-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-4xl);
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-progress-fill--fundraising {
+    background: var(--progress-fundraising);
+}
+
+.detail-progress-fill--participation {
+    background: var(--progress-participation);
+}
+
+.detail-progress-fill--goods-donation {
+    background: var(--progress-goods);
+}
+
+/* Items table (goods-donation) */
+.detail-items-table-wrapper {
+    margin-top: 1.25rem;
+    overflow-x: auto;
+}
+
+.detail-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-muted);
+}
+
+.detail-items-table th {
+    text-align: left;
+    font-weight: 600;
+    font-size: var(--text-metadata);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-items-table td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    color: var(--foreground);
+    vertical-align: middle;
+}
+
+.detail-item-name {
+    font-weight: 500;
+}
+
+.detail-item-progress-track {
+    height: 6px;
+    min-width: 60px;
+    border-radius: var(--radius-4xl);
+    background: var(--muted);
+    overflow: hidden;
+}
+
+/* Gallery */
+.detail-gallery {
+    margin-bottom: 2rem;
+}
+
+.detail-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .detail-gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.detail-gallery-img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--radius-lg);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.detail-gallery-img:hover {
+    transform: scale(1.03);
+}
+
+/* ── Sidebar (CTA card) ── */
+.detail-sidebar {
+    order: -1;
+}
+
+@media (min-width: 768px) {
+    .detail-sidebar {
+        order: 0;
+    }
+}
+
+.detail-cta-card {
+    position: sticky;
+    top: 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    border-radius: var(--radius-xl);
+    background: var(--card);
+    box-shadow:
+        0 4px 16px color-mix(in oklch, var(--foreground) 6%, transparent),
+        0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+
+.detail-cta-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-cta-progress-pct {
+    font-size: var(--text-muted);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.detail-cta-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.detail-cta-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.detail-cta-stat-value {
+    font-family: var(--font-heading);
+    font-size: var(--text-card-heading);
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+.detail-cta-stat-label {
+    font-size: var(--text-metadata);
+    color: var(--muted-foreground);
+}
+
+/* CTA button */
+.detail-cta-button {
+    width: 100%;
+    height: 2.75rem !important;
+    font-size: 0.95rem !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+/* Creator card */
+.detail-cta-creator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.detail-cta-creator-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: color-mix(in oklch, var(--primary) 15%, transparent);
+    color: var(--primary);
+    font-weight: 700;
+    font-size: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.detail-cta-creator-label {
+    display: block;
+    font-size: var(--text-metadata);
+    color: var(--muted-foreground);
+}
+
+.detail-cta-creator-name {
+    display: block;
+    font-size: var(--text-muted);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+/* ================================================================
+   FEATURED CAMPAIGNS — Homepage section
+   ================================================================ */
+
+.featured-campaigns-section {
+    padding: 3rem 0 2rem;
+    border-top: 1px solid var(--border);
+}
+
+.featured-campaigns-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.featured-campaigns-eyebrow {
+    display: inline-block;
+    font-size: var(--text-metadata);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.featured-campaigns-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-section-heading);
+    font-weight: 700;
+    line-height: var(--leading-section-heading);
+    color: var(--foreground);
+}
+
+.featured-campaigns-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-muted);
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: gap 0.2s ease, opacity 0.2s ease;
+}
+
+.featured-campaigns-view-all:hover {
+    gap: 0.625rem;
+    opacity: 0.8;
+}
+
+.featured-campaigns-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .featured-campaigns-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .featured-campaigns-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
