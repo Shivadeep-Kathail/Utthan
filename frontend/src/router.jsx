@@ -11,6 +11,7 @@ import SignupPage from '@/pages/SignupPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
+import ProfilePage from '@/pages/ProfilePage';
 import CreateCampaignPage from '@/pages/CreateCampaignPage';
 import AdminPage from '@/pages/AdminPage';
 import NotFoundPage from '@/pages/NotFoundPage';
@@ -22,7 +23,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
  * - Public:    /, /campaigns, /campaigns/:slug
  * - Guest:     /login, /signup, /forgot-password (redirect if logged in)
  * - Public:    /reset-password/:token (user may not have a session)
- * - Protected: /dashboard, /create-campaign, /admin (must be logged in)
+ * - Protected: /dashboard, /profile, /create-campaign, /admin (must be logged in)
  * - Catch-all: * → 404
  */
 const router = createBrowserRouter([
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: 'dashboard', element: <DashboardPage /> },
+          { path: 'profile', element: <ProfilePage /> },
           { path: 'create-campaign', element: <CreateCampaignPage /> },
           { path: 'admin', element: <AdminPage /> },
         ],

@@ -14,7 +14,7 @@ const NAV_LINKS = [
  * Responsive navbar with auth-conditional rendering.
  *
  * Logged out: NAV_LINKS + Login/Signup
- * Logged in:  NAV_LINKS + Dashboard + user greeting + Logout
+ * Logged in:  NAV_LINKS + Dashboard + Profile + user greeting + Logout
  * Admin/Mod:  Also shows Admin link
  */
 function Navbar() {
@@ -60,6 +60,7 @@ function Navbar() {
   const authedNavLinks = [
     ...NAV_LINKS,
     { to: '/dashboard', label: 'Dashboard' },
+    { to: '/profile', label: 'Profile' },
     ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
   ];
 

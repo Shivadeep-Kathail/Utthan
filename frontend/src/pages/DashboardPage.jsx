@@ -1,16 +1,18 @@
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Megaphone, Heart, Bell } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
-import { UpdateProfileForm } from '@/components/dashboard/UpdateProfileForm';
-import { ChangePasswordForm } from '@/components/dashboard/ChangePasswordForm';
-import { DeleteAccountSection } from '@/components/dashboard/DeleteAccountSection';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 /**
- * User dashboard page.
+ * User dashboard page — tabbed container for activity data.
  *
- * Phase 2: Account settings (profile, password, delete).
- * Phase 6: Will add campaign/donation data sections below.
- * Built to compose cleanly — each section is a self-contained component.
+ * Restructured: account-settings components moved to /profile (ProfilePage).
+ * Tabs:
+ *  - My Campaigns  → Phase 4 content
+ *  - My Donations  → Phase 5/6 content
+ *  - Notifications → Phase 8 content (Socket.io-based)
+ *
+ * Each tab is a placeholder until its corresponding phase lands.
  */
 function DashboardPage() {
   const { user } = useAuth();
@@ -27,33 +29,52 @@ function DashboardPage() {
             Welcome, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage your account and activity.
+            Track your campaigns, donations, and notifications.
           </p>
         </div>
       </div>
 
-      {/* Account Settings */}
-      <div className="space-y-6 max-w-2xl">
-        <h2 className="text-lg font-semibold text-foreground">
-          Account Settings
-        </h2>
+      {/* Tabbed content */}
+      <Tabs defaultValue="campaigns">
+        <TabsList>
+          <TabsTrigger value="campaigns">
+            <Megaphone className="size-4" data-icon="inline-start" aria-hidden="true" />
+            My Campaigns
+          </TabsTrigger>
+          <TabsTrigger value="donations">
+            <Heart className="size-4" data-icon="inline-start" aria-hidden="true" />
+            My Donations
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="size-4" data-icon="inline-start" aria-hidden="true" />
+            Notifications
+          </TabsTrigger>
+        </TabsList>
 
-        <UpdateProfileForm />
-        <ChangePasswordForm />
-        <DeleteAccountSection />
-      </div>
+        <TabsContent value="campaigns">
+          <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border p-8">
+            <p className="text-sm text-muted-foreground">
+              Your created campaigns will appear here. Coming in Phase 4.
+            </p>
+          </div>
+        </TabsContent>
 
-      {/* Phase 6 stub — campaigns & donations */}
-      <div className="space-y-4 max-w-2xl">
-        <h2 className="text-lg font-semibold text-foreground">
-          Your Activity
-        </h2>
-        <div className="flex min-h-[20vh] items-center justify-center rounded-lg border border-dashed border-border p-8">
-          <p className="text-sm text-muted-foreground">
-            Campaign and donation data will appear here in a future update.
-          </p>
-        </div>
-      </div>
+        <TabsContent value="donations">
+          <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border p-8">
+            <p className="text-sm text-muted-foreground">
+              Your donation history will appear here. Coming soon.
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border p-8">
+            <p className="text-sm text-muted-foreground">
+              Real-time notifications will appear here. Coming soon.
+            </p>
+          </div>
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }
