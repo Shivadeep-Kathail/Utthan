@@ -26,7 +26,12 @@ const userSchema = new mongoose.Schema(
     },
     passwordConfirm: {
       type: String,
-      required: [true, 'Please confirm your password'],
+      required: [
+        function () {
+          return this.isNew || this.isModified('password');
+        },
+        'Please confirm your password',
+      ],
       minlength: [8, 'Minimum length of password is 8'],
       validate: {
         validator: function (el) {

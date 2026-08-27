@@ -34,11 +34,8 @@ exports.updateMe = async (req, res, next) => {
     return next(new AppError('No valid fields provided for update.', 422));
   }
 
-  const user = await User.findOne({
-    _id: req.user.id,
-    isDeleted: false,
-  });
-  if (!user) {
+  const user = await User.findById(req.user.id);
+  if (!user || user.isDeleted) {
     return next(new AppError('User not found.', 404));
   }
 
