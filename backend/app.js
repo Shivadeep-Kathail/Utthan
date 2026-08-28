@@ -8,6 +8,8 @@ const helmet = require('helmet');
 const hpp = require('hpp');
 const xss = require('xss');
 
+const path = require('path');
+
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 
@@ -19,10 +21,14 @@ const donationRouter = require('./routes/donationRoutes');
 const paymentRouter = require('./routes/paymentRoutes');
 const webhookRouter = require('./routes/webhookRoutes');
 const goodsDonationRouter = require('./routes/goodsDonationRoutes');
+const uploadRouter = require('./routes/uploadRoutes');
 
 const app = express();
 
 app.use(helmet());
+
+// Serve uploaded files as static assets
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(
   cors({
@@ -96,6 +102,7 @@ app.use('/api/payments', paymentRouter);
 app.use('/api/admin/campaigns', adminCampaignRouter);
 app.use('/api/admin/users', adminUserRouter);
 app.use('/api/goods-donations', goodsDonationRouter);
+app.use('/api/upload', uploadRouter);
 
 app.all('/*splat', (req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));

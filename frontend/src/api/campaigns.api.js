@@ -36,3 +36,36 @@ export function getCampaignBySlug(slug) {
     .get(`/campaign/${slug}`)
     .then((res) => res.data);
 }
+
+// ── Protected (require auth cookie) ────────────────────────────
+
+/**
+ * Create a new campaign.
+ * Backend sets creator from the cookie and defaults status to 'pending'.
+ */
+export function createCampaign(data) {
+  return axiosClient
+    .post('/campaign', data)
+    .then((res) => res.data);
+}
+
+/**
+ * Upload a single image file.
+ *
+ * Uses multipart/form-data — the Content-Type header is explicitly
+ * set to undefined so the browser auto-generates the correct
+ * multipart boundary. axiosClient defaults to application/json
+ * which would break file uploads.
+ *
+ * Returns: { status, data: { url: 'http://...' } }
+ */
+export function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  return axiosClient
+    .post('/upload', formData, {
+      headers: { 'Content-Type': undefined },
+    })
+    .then((res) => res.data);
+}
