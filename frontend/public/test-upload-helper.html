@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head><title>Upload Test Helper</title></head>
+<body>
+<h1>Upload Test Helper</h1>
+<p id="status">Loading...</p>
+<script>
+// This page auto-triggers an image upload and then redirects
+// to the create-campaign page after injecting the URL into localStorage
+async function doUpload() {
+  const statusEl = document.getElementById('status');
+  try {
+    statusEl.textContent = 'Fetching test image...';
+    const res = await fetch('/test-campaign-image.png');
+    const blob = await res.blob();
+    
+    statusEl.textContent = 'Uploading to backend...';
+    const formData = new FormData();
+    formData.append('image', blob, 'test-campaign-image.png');
+    
+    // Need auth cookie - make request to upload endpoint
+    const uploadRes = await fetch('http://localhost:8080/api/upload', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+    
+    const data = await uploadRes.json();
+    
+    if (data.status === 'success' && data.data && data.data.url) {
+      statusEl.textContent = 'Upload successful! URL: ' + data.data.url;
+      // Store the URL in localStorage for the create-campaign page to read
+      localStorage.setItem('__test_upload_url', data.data.url);
+      // Add a visible element with the URL
+      const urlEl = document.createElement('p');
+      urlEl.id = 'upload-result';
+      urlEl.textContent = 'UPLOAD_URL=' + data.data.url;
+      document.body.appendChild(urlEl);
+    } else {
+      statusEl.textContent = 'Upload failed: ' + JSON.stringify(data);
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+  }
+}
+
+doUpload();
+</script>
+</body>
+</html>

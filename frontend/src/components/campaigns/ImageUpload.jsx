@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ImagePlus, X, AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { uploadImage } from '@/api/campaigns.api';
@@ -15,6 +15,32 @@ export function ImageUpload({ value, onChange, error }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const inputRef = useRef(null);
+
+  // ── TEMPORARY: auto-upload for browser testing ───
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('autoUploadTest') !== '1') return;
+    if (value) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/test-campaign-image.png');
+        const blob = await res.blob();
+        const file = new File([blob], 'test.png', { type: 'image/png' });
+        if (cancelled) return;
+        setIsUploading(true);
+        setUploadError('');
+        const uploadRes = await uploadImage(file);
+        if (!cancelled) onChange(uploadRes.data.url);
+      } catch (err) {
+        if (!cancelled) { setUploadError(err.message || 'Upload failed.'); onChange(''); }
+      } finally {
+        if (!cancelled) setIsUploading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── END TEMPORARY ─────────────────────────────────────────────
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];

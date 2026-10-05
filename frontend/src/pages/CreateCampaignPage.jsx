@@ -67,58 +67,89 @@ const locationSchema = z.object({
   address: z.string().min(1, 'Address is required'),
 });
 
-const campaignSchema = z
-  .object({
-    title: z
-      .string()
-      .trim()
-      .min(10, 'Title must be at least 10 characters')
-      .max(100, 'Title cannot exceed 100 characters'),
-    description: z
-      .string()
-      .trim()
-      .min(50, 'Description must be at least 50 characters')
-      .max(1000, 'Description cannot exceed 1000 characters'),
-    category: z.enum(
-      CATEGORIES.map((c) => c.value),
-      { message: 'Please select a category' },
+const campaignSchema = z.preprocess(
+  // Strip type-conditional fields BEFORE validation so that default
+  // values for hidden fields (e.g. items: [{ name: '', needed: '' }])
+  // don't cause silent validation failures.
+  (val) => {
+    const d = { ...val };
+    if (d.type !== 'fundraising') d.amountNeeded = undefined;
+    if (d.type !== 'participation') d.participantGoal = undefined;
+    if (d.type !== 'goods-donation') d.items = undefined;
+    return d;
+  },
+  z
+    .object({
+      title: z
+        .string()
+        .trim()
+        .min(10, 'Title must be at least 10 characters')
+        .max(100, 'Title cannot exceed 100 characters'),
+      description: z
+        .string()
+        .trim()
+        .min(50, 'Description must be at least 50 characters')
+        .max(1000, 'Description cannot exceed 1000 characters'),
+      category: z.enum(
+        CATEGORIES.map((c) => c.value),
+        { message: 'Please select a category' },
+      ),
+      type: z.enum(
+        TYPES.map((t) => t.value),
+        { message: 'Please select a campaign type' },
+      ),
+      amountNeeded: z.coerce.number().optional(),
+      participantGoal: z.coerce.number().optional(),
+      items: z.array(itemSchema).optional(),
+      coverImage: z.string().min(1, 'Cover image is required'),
+      location: locationSchema,
+    })
+    .refine(
+      (data) => {
+        if (data.type === 'fundraising') return (data.amountNeeded ?? 0) >= 1;
+        return true;
+      },
+      { message: 'Amount needed must be at least 1', path: ['amountNeeded'] },
+    )
+    .refine(
+      (data) => {
+        if (data.type === 'participation')
+          return (data.participantGoal ?? 0) >= 1;
+        return true;
+      },
+      {
+        message: 'Participant goal must be at least 1',
+        path: ['participantGoal'],
+      },
+    )
+    .refine(
+      (data) => {
+        if (data.type === 'goods-donation')
+          return data.items && data.items.length >= 1;
+        return true;
+      },
+      { message: 'At least one item is required', path: ['items'] },
     ),
-    type: z.enum(
-      TYPES.map((t) => t.value),
-      { message: 'Please select a campaign type' },
-    ),
-    amountNeeded: z.coerce.number().optional(),
-    participantGoal: z.coerce.number().optional(),
-    items: z.array(itemSchema).optional(),
-    coverImage: z.string().min(1, 'Cover image is required'),
-    location: locationSchema,
-  })
-  .refine(
-    (data) => {
-      if (data.type === 'fundraising') return (data.amountNeeded ?? 0) >= 1;
-      return true;
-    },
-    { message: 'Amount needed must be at least 1', path: ['amountNeeded'] },
-  )
-  .refine(
-    (data) => {
-      if (data.type === 'participation')
-        return (data.participantGoal ?? 0) >= 1;
-      return true;
-    },
-    {
-      message: 'Participant goal must be at least 1',
-      path: ['participantGoal'],
-    },
-  )
-  .refine(
-    (data) => {
-      if (data.type === 'goods-donation')
-        return data.items && data.items.length >= 1;
-      return true;
-    },
-    { message: 'At least one item is required', path: ['items'] },
-  );
+);
+
+/**
+ * Recursively flatten react-hook-form's nested errors object into a
+ * flat array of { path, message } for the error summary display.
+ */
+function flattenErrors(errors, prefix = '') {
+  const result = [];
+  for (const key of Object.keys(errors)) {
+    if (key === 'ref') continue; // skip RHF internal ref
+    const err = errors[key];
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (err?.message) {
+      result.push({ path, message: err.message });
+    } else if (typeof err === 'object' && err !== null) {
+      result.push(...flattenErrors(err, path));
+    }
+  }
+  return result;
+}
 
 /**
  * CreateCampaignPage — full campaign creation form.
@@ -515,10 +546,20 @@ function CreateCampaignPage() {
 
         {/* ── Submit ──────────────────────────────────────── */}
         <div className="create-campaign-footer">
-          {errors.root && (
-            <p className="form-error" role="alert">
-              {errors.root.message}
-            </p>
+          {/* Show a summary of all validation errors so the user always
+              knows what's blocking submission — even for fields whose
+              error display is inside a conditionally-rendered section. */}
+          {Object.keys(errors).length > 0 && (
+            <div className="form-error-summary" role="alert">
+              <p className="form-error-summary-title">
+                Please fix the following errors:
+              </p>
+              <ul className="form-error-summary-list">
+                {flattenErrors(errors).map(({ path, message }) => (
+                  <li key={path}>{message}</li>
+                ))}
+              </ul>
+            </div>
           )}
           <Button
             type="submit"

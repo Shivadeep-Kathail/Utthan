@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head><title>ImageUpload Component Test</title></head>
+<body>
+<h1>ImageUpload Component Test</h1>
+<p>This page tests the ImageUpload component by programmatically injecting a file into the create-campaign form.</p>
+<p id="status">Waiting for create-campaign page to load...</p>
+<p>Navigate to <a href="/create-campaign" id="go-link">Create Campaign</a> first, then come back here.</p>
+
+<h2>How to test:</h2>
+<ol>
+<li>Open the browser console on the create-campaign page</li>
+<li>Paste and run the script below</li>
+</ol>
+
+<h2>Test Script (paste in console on /create-campaign):</h2>
+<pre id="script">
+fetch('/test-campaign-image.png')
+  .then(r => r.blob())
+  .then(blob => {
+    const file = new File([blob], 'test-campaign-image.png', { type: 'image/png' });
+    const input = document.getElementById('campaign-cover-image');
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    ).set;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    // React 19 uses native events
+    const event = new Event('change', { bubbles: true });
+    input.dispatchEvent(event);
+    console.log('File injected, onChange should trigger upload');
+  });
+</pre>
+
+<script>
+// This script will be used to test the full flow from the helper page
+// by using an iframe approach
+</script>
+</body>
+</html>

@@ -818,6 +818,34 @@
     min-height: 1rem; /* prevent layout shift */
 }
 
+.form-error-summary {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: color-mix(in oklch, var(--destructive) 8%, transparent);
+    border: 1px solid color-mix(in oklch, var(--destructive) 25%, transparent);
+    width: 100%;
+}
+
+.form-error-summary-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--destructive);
+    margin-bottom: 0.375rem;
+}
+
+.form-error-summary-list {
+    list-style: disc;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.form-error-summary-list li {
+    font-size: 0.75rem;
+    color: var(--destructive);
+}
+
 .form-group {
     display: flex;
     flex-direction: column;
