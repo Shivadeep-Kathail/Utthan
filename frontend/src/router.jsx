@@ -13,6 +13,7 @@ import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
 import CreateCampaignPage from '@/pages/CreateCampaignPage';
+import EditCampaignPage from '@/pages/EditCampaignPage';
 import AdminPage from '@/pages/AdminPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
@@ -55,6 +56,7 @@ const router = createBrowserRouter([
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'create-campaign', element: <CreateCampaignPage /> },
+          { path: 'campaigns/:slug/edit', element: <EditCampaignPage /> },
           { path: 'admin', element: <AdminPage /> },
         ],
       },

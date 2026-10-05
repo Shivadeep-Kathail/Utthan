@@ -59,6 +59,37 @@ export function createCampaign(data) {
  *
  * Returns: { status, data: { url: 'http://...' } }
  */
+/**
+ * List the logged-in user's own campaigns (all statuses).
+ * NOT paginated — returns the full array.
+ * Response: { status, results, data: { campaigns } }
+ */
+export function getMyCampaigns() {
+  return axiosClient
+    .get('/campaign/my-campaigns')
+    .then((res) => res.data);
+}
+
+/**
+ * Update a campaign by slug.
+ * Backend allows: title, description, category, coverImage, images, location.
+ * Response: { status, data: { campaign } }
+ */
+export function updateCampaign(slug, data) {
+  return axiosClient
+    .patch(`/campaign/${slug}`, data)
+    .then((res) => res.data);
+}
+
+/**
+ * Soft-delete a campaign by slug.
+ * Backend sets isDeleted: true. Returns 204 (no body).
+ */
+export function deleteCampaign(slug) {
+  return axiosClient
+    .delete(`/campaign/${slug}`);
+}
+
 export function uploadImage(file) {
   const formData = new FormData();
   formData.append('image', file);

@@ -2,17 +2,16 @@ import { LayoutDashboard, Megaphone, Heart, Bell } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { MyCampaignsTab } from '@/components/dashboard/MyCampaignsTab';
 
 /**
  * User dashboard page — tabbed container for activity data.
  *
  * Restructured: account-settings components moved to /profile (ProfilePage).
  * Tabs:
- *  - My Campaigns  → Phase 4 content
+ *  - My Campaigns  → Phase 4b (list, edit, delete own campaigns)
  *  - My Donations  → Phase 5/6 content
  *  - Notifications → Phase 8 content (Socket.io-based)
- *
- * Each tab is a placeholder until its corresponding phase lands.
  */
 function DashboardPage() {
   const { user } = useAuth();
@@ -52,11 +51,7 @@ function DashboardPage() {
         </TabsList>
 
         <TabsContent value="campaigns">
-          <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border p-8">
-            <p className="text-sm text-muted-foreground">
-              Your created campaigns will appear here. Coming in Phase 4.
-            </p>
-          </div>
+          <MyCampaignsTab />
         </TabsContent>
 
         <TabsContent value="donations">
