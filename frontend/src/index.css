@@ -1658,6 +1658,79 @@
     color: var(--foreground);
 }
 
+/* ── Donate dialog ───────────────────────────────────────────── */
+
+.donate-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.donate-dialog-label {
+    font-size: var(--text-muted);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.donate-dialog-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.donate-dialog-input-icon {
+    position: absolute;
+    left: 0.625rem;
+    color: var(--muted-foreground);
+    pointer-events: none;
+}
+
+.donate-dialog-input {
+    padding-left: 2rem !important;
+    font-size: 1.125rem !important;
+    height: 2.5rem !important;
+}
+
+.donate-dialog-presets {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.donate-dialog-preset {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--foreground);
+    font-size: var(--text-muted);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.donate-dialog-preset:hover:not(:disabled) {
+    background: var(--muted);
+    border-color: var(--ring);
+}
+
+.donate-dialog-preset:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.donate-dialog-status {
+    font-size: var(--text-muted);
+    color: var(--muted-foreground);
+    text-align: center;
+    animation: pulse-fade 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-fade {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 /* ================================================================
    FEATURED CAMPAIGNS — Homepage section
    ================================================================ */

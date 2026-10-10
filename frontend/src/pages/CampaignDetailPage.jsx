@@ -10,13 +10,24 @@ import {
   Package,
   Tag,
   ArrowLeft,
+  IndianRupee,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import * as campaignsApi from '@/api/campaigns.api';
+import * as paymentsApi from '@/api/payments.api';
 import { PageSpinner } from '@/components/feedback/PageSpinner';
 import { PageError } from '@/components/feedback/PageError';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Link } from 'react-router-dom';
 
 /** Type configuration for badges and CTAs. */
@@ -71,25 +82,27 @@ function formatCurrency(amount) {
 
 /**
  * Single campaign detail page — fetches by slug, renders
- * type-specific content with auth-gated CTA placeholders.
+ * type-specific content with auth-gated CTAs.
  *
- * Fundraising → amount raised/needed + progress bar + "Donate" CTA
- * Participation → participant count/goal + progress bar + "Join" CTA
- * Goods-donation → items list + overall progress + "Donate goods" CTA
- *
- * CTAs are visual placeholders only (Phase 5):
- *  - Unauthenticated → redirect to /login with state.from
- *  - Authenticated → "Coming soon" toast
+ * Fundraising → amount raised/needed + progress bar + "Donate" CTA (Phase 5a — live)
+ * Participation → participant count/goal + progress bar + "Join" CTA (Phase 5b placeholder)
+ * Goods-donation → items list + overall progress + "Donate goods" CTA (Phase 5c placeholder)
  */
 function CampaignDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // ── Donate dialog state (fundraising only) ─────────────────────
+  const [donateOpen, setDonateOpen] = useState(false);
+  const [donateAmount, setDonateAmount] = useState('');
+  const [donateLoading, setDonateLoading] = useState(false);
+  const [donatePhase, setDonatePhase] = useState('idle'); // idle | creating | checkout | verifying | done
 
   const fetchCampaign = useCallback(async () => {
     setLoading(true);
@@ -108,14 +121,136 @@ function CampaignDetailPage() {
     fetchCampaign();
   }, [fetchCampaign]);
 
-  /** Auth-gated CTA click handler. */
+  /**
+   * Auth-gated CTA click handler.
+   * Fundraising → opens donate dialog.
+   * Participation / goods-donation → placeholder toast (Phase 5b/5c).
+   */
   const handleCtaClick = () => {
     if (authLoading) return;
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location } });
       return;
     }
+
+    if (campaign?.type === 'fundraising') {
+      setDonateAmount('');
+      setDonatePhase('idle');
+      setDonateOpen(true);
+      return;
+    }
+
+    // Participation & goods-donation — still placeholder
     toast.info('Coming soon — this will be available in a future update.');
+  };
+
+  /**
+   * Full Razorpay donation flow:
+   *   1. Call createOrder with campaign _id + amount
+   *   2. Open Razorpay Checkout with returned order details
+   *   3. On Razorpay success → call verifyPayment
+   *   4. Show success toast, refetch campaign for updated amountRaised
+   *
+   * verify-payment marks the donation as 'captured' and increments
+   * amountRaised synchronously (confirmed from paymentController.js).
+   * The webhook is a redundant backup — so we can show true success,
+   * not just "processing".
+   */
+  const handleDonate = async () => {
+    const amt = Number(donateAmount);
+    if (!amt || amt <= 0) {
+      toast.error('Please enter a valid amount.');
+      return;
+    }
+
+    setDonateLoading(true);
+    setDonatePhase('creating');
+
+    try {
+      // ── Step 1: create Razorpay order ──────────────────────────
+      const orderRes = await paymentsApi.createOrder(campaign._id, amt);
+      const { order, donationId: _donationId } = orderRes.data;
+
+      setDonatePhase('checkout');
+
+      // ── Step 2: open Razorpay Checkout ─────────────────────────
+      const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      if (!rzpKey) {
+        toast.error('Payment configuration missing. Please try again later.');
+        setDonateLoading(false);
+        setDonatePhase('idle');
+        return;
+      }
+
+      const options = {
+        key: rzpKey,
+        amount: order.amount, // in paise, from Razorpay order
+        currency: order.currency,
+        name: 'Utthan',
+        description: `Donation to "${campaign.title}"`,
+        order_id: order.id,
+        prefill: {
+          name: user?.name ?? '',
+          email: user?.email ?? '',
+        },
+        theme: {
+          color: '#6d5dfc',
+        },
+        handler: async (response) => {
+          // ── Step 3: verify payment ────────────────────────────
+          setDonatePhase('verifying');
+          try {
+            await paymentsApi.verifyPayment({
+              order_id: response.razorpay_order_id,
+              payment_id: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+            });
+
+            setDonatePhase('done');
+            setDonateOpen(false);
+            toast.success(
+              `Thank you! Your donation of ${formatCurrency(amt)} has been verified.`,
+            );
+
+            // Refetch campaign to pick up updated amountRaised
+            fetchCampaign();
+          } catch (verifyErr) {
+            toast.error(
+              verifyErr?.message ?? 'Payment verification failed. Please contact support.',
+            );
+          } finally {
+            setDonateLoading(false);
+            setDonatePhase('idle');
+          }
+        },
+        modal: {
+          // User-initiated cancel — not an error
+          ondismiss: () => {
+            setDonateLoading(false);
+            setDonatePhase('idle');
+          },
+          escape: true,
+          confirm_close: true,
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+
+      // Payment failure callback (distinct from user cancel)
+      rzp.on('payment.failed', (failResponse) => {
+        toast.error(
+          failResponse?.error?.description ?? 'Payment failed. Please try again.',
+        );
+        setDonateLoading(false);
+        setDonatePhase('idle');
+      });
+
+      rzp.open();
+    } catch (err) {
+      toast.error(err?.message ?? 'Could not create donation order. Please try again.');
+      setDonateLoading(false);
+      setDonatePhase('idle');
+    }
   };
 
   // ── Loading / Error states ────────────────────────────────────
@@ -356,6 +491,83 @@ function CampaignDetailPage() {
           </div>
         </aside>
       </div>
+
+      {/* ── Donate dialog (fundraising only) ── */}
+      {campaign.type === 'fundraising' && (
+        <Dialog open={donateOpen} onOpenChange={setDonateOpen}>
+          <DialogContent showCloseButton={!donateLoading}>
+            <DialogHeader>
+              <DialogTitle>Make a Donation</DialogTitle>
+              <DialogDescription>
+                Support <strong>{campaign.title}</strong> with a monetary contribution.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="donate-dialog-body">
+              <label className="donate-dialog-label" htmlFor="donate-amount">
+                Amount (₹)
+              </label>
+              <div className="donate-dialog-input-wrapper">
+                <IndianRupee className="size-4 donate-dialog-input-icon" aria-hidden="true" />
+                <Input
+                  id="donate-amount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="e.g. 500"
+                  value={donateAmount}
+                  onChange={(e) => setDonateAmount(e.target.value)}
+                  disabled={donateLoading}
+                  className="donate-dialog-input"
+                  autoFocus
+                />
+              </div>
+
+              {/* Quick-pick amounts */}
+              <div className="donate-dialog-presets">
+                {[100, 500, 1000, 5000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="donate-dialog-preset"
+                    disabled={donateLoading}
+                    onClick={() => setDonateAmount(String(preset))}
+                  >
+                    ₹{preset.toLocaleString('en-IN')}
+                  </button>
+                ))}
+              </div>
+
+              {/* Phase indicator */}
+              {donateLoading && (
+                <p className="donate-dialog-status">
+                  {donatePhase === 'creating' && 'Creating order…'}
+                  {donatePhase === 'checkout' && 'Waiting for payment…'}
+                  {donatePhase === 'verifying' && 'Verifying payment…'}
+                </p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDonateOpen(false)}
+                disabled={donateLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDonate}
+                loading={donateLoading}
+                disabled={donateLoading || !donateAmount || Number(donateAmount) <= 0}
+              >
+                <Heart className="size-4" data-icon="inline-start" aria-hidden="true" />
+                Donate {donateAmount && Number(donateAmount) > 0 ? formatCurrency(Number(donateAmount)) : ''}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </article>
   );
 }
