@@ -90,6 +90,55 @@ export function deleteCampaign(slug) {
     .delete(`/campaign/${slug}`);
 }
 
+// ── Participation (require auth cookie) ────────────────────────
+
+/**
+ * Join a participation campaign.
+ * Backend validates: active status, participation type, not own campaign,
+ * not already joined, participant limit not reached.
+ * Response (201): { status, data: { participant } }
+ * Errors: 400 (not active / not participation / own campaign / full),
+ *         409 (already joined), 404 (not found)
+ */
+export function joinCampaign(slug) {
+  return axiosClient
+    .post(`/campaign/${slug}/join`)
+    .then((res) => res.data);
+}
+
+/**
+ * Leave a participation campaign.
+ * Response (200): { status, message }
+ * Errors: 409 (not joined), 404 (not found)
+ */
+export function leaveCampaign(slug) {
+  return axiosClient
+    .delete(`/campaign/${slug}/leave`)
+    .then((res) => res.data);
+}
+
+/**
+ * Get participant list for a campaign.
+ * Restricted to campaign creator or admin.
+ * Response: { status, result, data: { participants } }
+ * Errors: 403 (not creator/admin), 404 (not found)
+ */
+export function getParticipants(slug) {
+  return axiosClient
+    .get(`/campaign/${slug}/participants`)
+    .then((res) => res.data);
+}
+
+/**
+ * Check whether the current user has joined a participation campaign.
+ * Response: { status, data: { joined: boolean } }
+ */
+export function getParticipationStatus(slug) {
+  return axiosClient
+    .get(`/campaign/${slug}/participation`)
+    .then((res) => res.data);
+}
+
 export function uploadImage(file) {
   const formData = new FormData();
   formData.append('image', file);

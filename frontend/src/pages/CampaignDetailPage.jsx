@@ -11,6 +11,7 @@ import {
   Tag,
   ArrowLeft,
   IndianRupee,
+  LogOut,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
@@ -85,7 +86,7 @@ function formatCurrency(amount) {
  * type-specific content with auth-gated CTAs.
  *
  * Fundraising → amount raised/needed + progress bar + "Donate" CTA (Phase 5a — live)
- * Participation → participant count/goal + progress bar + "Join" CTA (Phase 5b placeholder)
+ * Participation → participant count/goal + progress bar + "Join"/"Leave" CTA (Phase 5b — live)
  * Goods-donation → items list + overall progress + "Donate goods" CTA (Phase 5c placeholder)
  */
 function CampaignDetailPage() {
@@ -104,6 +105,11 @@ function CampaignDetailPage() {
   const [donateLoading, setDonateLoading] = useState(false);
   const [donatePhase, setDonatePhase] = useState('idle'); // idle | creating | checkout | verifying | done
 
+  // ── Participation join/leave state ─────────────────────────────
+  const [hasJoined, setHasJoined] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinStatusLoading, setJoinStatusLoading] = useState(false);
+
   const fetchCampaign = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -117,14 +123,53 @@ function CampaignDetailPage() {
     }
   }, [slug]);
 
+  /** Quietly refetch campaign data without showing a spinner or resetting scroll. */
+  const refetchCampaignQuietly = useCallback(async () => {
+    try {
+      const res = await campaignsApi.getCampaignBySlug(slug);
+      const fresh = res.data?.campaign;
+      if (fresh) setCampaign(fresh);
+    } catch {
+      // Silently ignore — optimistic state is already shown
+    }
+  }, [slug]);
+
   useEffect(() => {
     fetchCampaign();
   }, [fetchCampaign]);
 
+  // Fetch join status when campaign loads (authenticated + participation only)
+  useEffect(() => {
+    if (
+      !campaign ||
+      campaign.type !== 'participation' ||
+      !isAuthenticated ||
+      authLoading
+    ) {
+      return;
+    }
+    let cancelled = false;
+    setJoinStatusLoading(true);
+    campaignsApi
+      .getParticipationStatus(slug)
+      .then((res) => {
+        if (!cancelled) setHasJoined(res.data?.joined ?? false);
+      })
+      .catch(() => {
+        // Silently fail — the 409 safety net on click still works
+      })
+      .finally(() => {
+        if (!cancelled) setJoinStatusLoading(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign?._id, campaign?.type, slug, isAuthenticated, authLoading]);
+
   /**
    * Auth-gated CTA click handler.
    * Fundraising → opens donate dialog.
-   * Participation / goods-donation → placeholder toast (Phase 5b/5c).
+   * Participation → join/leave flow (Phase 5b).
+   * Goods-donation → placeholder toast (Phase 5c).
    */
   const handleCtaClick = () => {
     if (authLoading) return;
@@ -140,8 +185,145 @@ function CampaignDetailPage() {
       return;
     }
 
-    // Participation & goods-donation — still placeholder
+    if (campaign?.type === 'participation') {
+      if (hasJoined) {
+        handleLeaveCampaign();
+      } else {
+        handleJoinCampaign();
+      }
+      return;
+    }
+
+    // Goods-donation — still placeholder
     toast.info('Coming soon — this will be available in a future update.');
+  };
+
+  // ── Join campaign (participation) ──────────────────────────────
+  const handleJoinCampaign = async () => {
+    setJoinLoading(true);
+
+    // Optimistic update
+    setHasJoined(true);
+    setCampaign((prev) =>
+      prev
+        ? { ...prev, participantCount: (prev.participantCount ?? 0) + 1 }
+        : prev,
+    );
+
+    try {
+      await campaignsApi.joinCampaign(slug);
+      toast.success('You have joined this campaign!');
+      // Quietly reconcile with the server in the background
+      refetchCampaignQuietly();
+    } catch (err) {
+      if (err?.status === 409) {
+        // Already joined — keep the flipped state, it was correct
+        toast.info('You have already joined this campaign.');
+        return;
+      }
+      // Rollback optimistic update on any other error
+      setHasJoined(false);
+      setCampaign((prev) =>
+        prev
+          ? { ...prev, participantCount: Math.max((prev.participantCount ?? 1) - 1, 0) }
+          : prev,
+      );
+      toast.error(err?.message ?? 'Failed to join campaign.');
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  // ── Leave campaign (participation) ─────────────────────────────
+  const handleLeaveCampaign = async () => {
+    setJoinLoading(true);
+
+    // Optimistic update
+    setHasJoined(false);
+    setCampaign((prev) =>
+      prev
+        ? { ...prev, participantCount: Math.max((prev.participantCount ?? 1) - 1, 0) }
+        : prev,
+    );
+
+    try {
+      await campaignsApi.leaveCampaign(slug);
+      toast.success('You have left this campaign.');
+      // Quietly reconcile with the server in the background
+      refetchCampaignQuietly();
+    } catch (err) {
+      if (err?.status === 409) {
+        // Already left — keep the flipped state, it was correct
+        toast.info('You have already left this campaign.');
+        return;
+      }
+      // Rollback optimistic update
+      setHasJoined(true);
+      setCampaign((prev) =>
+        prev
+          ? { ...prev, participantCount: (prev.participantCount ?? 0) + 1 }
+          : prev,
+      );
+      toast.error(err?.message ?? 'Failed to leave campaign.');
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  // ── Participation CTA edge-state logic ─────────────────────────
+  const getParticipationCtaState = () => {
+    if (!campaign || campaign.type !== 'participation') return null;
+
+    // Campaign not active
+    if (campaign.status !== 'active') {
+      return {
+        disabled: true,
+        label: campaign.status === 'closed' ? 'Campaign closed' : 'Campaign not active',
+        icon: Users,
+      };
+    }
+
+    // Creator cannot join their own campaign
+    if (
+      isAuthenticated &&
+      user &&
+      campaign.creator &&
+      (campaign.creator._id === user._id || campaign.creator === user._id)
+    ) {
+      return {
+        disabled: true,
+        label: 'You created this campaign',
+        icon: Users,
+      };
+    }
+
+    // Campaign full (participantCount >= participantGoal)
+    if (
+      !hasJoined &&
+      campaign.participantGoal &&
+      (campaign.participantCount ?? 0) >= campaign.participantGoal
+    ) {
+      return {
+        disabled: true,
+        label: 'Campaign is full',
+        icon: Users,
+      };
+    }
+
+    // Normal join/leave state
+    if (hasJoined) {
+      return {
+        disabled: false,
+        label: 'Leave campaign',
+        icon: LogOut,
+      };
+    }
+
+    return {
+      disabled: false,
+      label: 'Join campaign',
+      icon: Users,
+    };
   };
 
   /**
@@ -276,8 +458,13 @@ function CampaignDetailPage() {
     switch (campaign.type) {
       case 'fundraising':
         return campaign.fundingProgress ?? 0;
-      case 'participation':
-        return campaign.participationProgress ?? 0;
+      case 'participation': {
+        // Derive from local state so it updates immediately on join/leave
+        const count = campaign.participantCount ?? 0;
+        const goal = campaign.participantGoal ?? 0;
+        const raw = goal > 0 ? (count / goal) * 100 : 0;
+        return Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 100) : 0;
+      }
       case 'goods-donation':
         return campaign.goodsProgress ?? 0;
       default:
@@ -464,15 +651,32 @@ function CampaignDetailPage() {
             )}
 
             {/* CTA button */}
-            <Button
-              size="lg"
-              className="detail-cta-button"
-              onClick={handleCtaClick}
-              disabled={campaign.status === 'closed'}
-            >
-              <CtaIcon className="size-4" data-icon="inline-start" aria-hidden="true" />
-              {campaign.status === 'closed' ? 'Campaign closed' : config.ctaLabel}
-            </Button>
+            {campaign.type === 'participation' ? (() => {
+              const ctaState = getParticipationCtaState();
+              const CtaIconResolved = ctaState?.icon ?? Users;
+              return (
+                <Button
+                  size="lg"
+                  className={`detail-cta-button ${hasJoined ? 'detail-cta-button--leave' : ''}`}
+                  onClick={handleCtaClick}
+                  disabled={ctaState?.disabled || joinLoading || joinStatusLoading}
+                  loading={joinLoading || joinStatusLoading}
+                >
+                  <CtaIconResolved className="size-4" data-icon="inline-start" aria-hidden="true" />
+                  {joinStatusLoading ? 'Checking…' : (ctaState?.label ?? config.ctaLabel)}
+                </Button>
+              );
+            })() : (
+              <Button
+                size="lg"
+                className="detail-cta-button"
+                onClick={handleCtaClick}
+                disabled={campaign.status === 'closed'}
+              >
+                <CtaIcon className="size-4" data-icon="inline-start" aria-hidden="true" />
+                {campaign.status === 'closed' ? 'Campaign closed' : config.ctaLabel}
+              </Button>
+            )}
 
             {/* Creator info */}
             {campaign.creator?.name && (

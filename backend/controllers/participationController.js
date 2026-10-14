@@ -123,3 +123,25 @@ exports.viewParticipants = async (req, res, next) => {
     },
   });
 };
+
+exports.checkParticipation = async (req, res, next) => {
+  const campaign = await Campaign.findOne({
+    slug: req.params.slug,
+    isDeleted: false,
+  });
+  if (!campaign) {
+    return next(new AppError('Campaign not found.', 404));
+  }
+
+  const joined = !!(await Participation.exists({
+    participant: req.user.id,
+    campaign: campaign._id,
+  }));
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      joined,
+    },
+  });
+};

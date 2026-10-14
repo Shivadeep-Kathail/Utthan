@@ -1622,6 +1622,16 @@
     border-radius: var(--radius-lg) !important;
 }
 
+.detail-cta-button--leave {
+    background-color: var(--destructive) !important;
+    color: white !important;
+    border-color: transparent !important;
+}
+
+.detail-cta-button--leave:hover:not(:disabled) {
+    background-color: color-mix(in oklch, var(--destructive), black 10%) !important;
+}
+
 /* Creator card */
 .detail-cta-creator {
     display: flex;

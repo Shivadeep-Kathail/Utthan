@@ -30,6 +30,11 @@ router.get(
   auth.protect,
   participationController.viewParticipants,
 );
+router.get(
+  '/:slug/participation',
+  auth.protect,
+  participationController.checkParticipation,
+);
 
 // Donation Routes
 router.get(
