@@ -2990,3 +2990,28 @@
         flex-wrap: wrap;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   CREATOR MANAGEMENT DIALOG — Phase 6b
+   ═══════════════════════════════════════════════════════════════════ */
+
+.manage-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.75rem;
+    min-height: 180px;
+    border-radius: var(--radius-lg, 0.75rem);
+    border: 1px dashed var(--border);
+    padding: 2rem 1.5rem;
+}
+
+.manage-card {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.manage-card:hover {
+    border-color: color-mix(in oklch, var(--primary) 30%, var(--border));
+}

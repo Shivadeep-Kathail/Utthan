@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Pencil, Trash2, ExternalLink, Plus, Megaphone } from 'lucide-react';
+import {
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Plus,
+  Megaphone,
+  SlidersHorizontal,
+} from 'lucide-react';
 
 import { getMyCampaigns, deleteCampaign } from '@/api/campaigns.api';
 import { Button } from '@/components/ui/button';
@@ -14,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ManageCampaignDialog } from '@/components/dashboard/ManageCampaignDialog';
 
 /**
  * Status badge config — maps backend status enum to human label
@@ -81,6 +89,19 @@ function MyCampaignsTab() {
   // Delete confirmation dialog state
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Manage campaign dialog state
+  const [manageTarget, setManageTarget] = useState(null);
+
+  const handleCampaignUpdate = (updatedCampaign) => {
+    if (!updatedCampaign) return;
+    setCampaigns((prev) =>
+      prev.map((c) => (c._id === updatedCampaign._id ? updatedCampaign : c)),
+    );
+    setManageTarget((prev) =>
+      prev && prev._id === updatedCampaign._id ? updatedCampaign : prev,
+    );
+  };
 
   const fetchCampaigns = useCallback(async () => {
     try {
@@ -215,6 +236,16 @@ function MyCampaignsTab() {
 
               {/* Actions */}
               <div className="my-campaigns-item-actions">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs font-medium"
+                  aria-label={`Manage ${campaign.title}`}
+                  onClick={() => setManageTarget(campaign)}
+                >
+                  <SlidersHorizontal className="size-3.5 mr-1.5" />
+                  Manage
+                </Button>
                 <Link
                   to={`/campaigns/${campaign.slug}`}
                   aria-label={`View ${campaign.title}`}
@@ -281,6 +312,16 @@ function MyCampaignsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Manage campaign dialog ── */}
+      <ManageCampaignDialog
+        campaign={manageTarget}
+        open={!!manageTarget}
+        onOpenChange={(open) => {
+          if (!open) setManageTarget(null);
+        }}
+        onCampaignUpdate={handleCampaignUpdate}
+      />
     </>
   );
 }

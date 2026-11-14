@@ -130,6 +130,18 @@ export function getParticipants(slug) {
 }
 
 /**
+ * Get donations received for a campaign (campaign creator or admin only).
+ *
+ * @param {string} slug — campaign slug
+ * @returns {{ status, results, data: { donations } }}
+ */
+export function getCampaignDonations(slug) {
+  return axiosClient
+    .get(`/campaign/${slug}/donations`)
+    .then((res) => res.data);
+}
+
+/**
  * Check whether the current user has joined a participation campaign.
  * Response: { status, data: { joined: boolean } }
  */
