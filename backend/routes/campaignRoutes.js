@@ -13,6 +13,11 @@ router
   .get(campaignController.getAllCampaigns);
 
 router.get('/my-campaigns', auth.protect, campaignController.getMyCampaigns);
+router.get(
+  '/my-participations',
+  auth.protect,
+  participationController.getMyParticipations,
+);
 
 // Participation Routes
 router.post(

@@ -145,3 +145,19 @@ exports.checkParticipation = async (req, res, next) => {
     },
   });
 };
+
+exports.getMyParticipations = async (req, res, next) => {
+  const participations = await Participation.find({
+    participant: req.user.id,
+  })
+    .populate('campaign', 'title slug status')
+    .sort('-createdAt');
+
+  res.status(200).json({
+    status: 'success',
+    results: participations.length,
+    data: {
+      participations,
+    },
+  });
+};

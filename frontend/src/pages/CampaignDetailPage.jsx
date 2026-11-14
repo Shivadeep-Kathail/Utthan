@@ -12,11 +12,15 @@ import {
   ArrowLeft,
   IndianRupee,
   LogOut,
+  AlertCircle,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import * as campaignsApi from '@/api/campaigns.api';
 import * as paymentsApi from '@/api/payments.api';
+import * as goodsDonationsApi from '@/api/goodsDonations.api';
 import { PageSpinner } from '@/components/feedback/PageSpinner';
 import { PageError } from '@/components/feedback/PageError';
 import { Button } from '@/components/ui/button';
@@ -82,12 +86,24 @@ function formatCurrency(amount) {
 }
 
 /**
+ * Compute goodsProgress locally from campaign.items to avoid stale virtual.
+ * Mirrors the backend virtual: campaignSchema.virtual('goodsProgress').
+ */
+function computeGoodsProgress(items) {
+  if (!items || items.length === 0) return 0;
+  const needed = items.reduce((sum, item) => sum + item.needed, 0);
+  const received = items.reduce((sum, item) => sum + (item.received ?? 0), 0);
+  if (needed === 0) return 0;
+  return (received / needed) * 100;
+}
+
+/**
  * Single campaign detail page — fetches by slug, renders
  * type-specific content with auth-gated CTAs.
  *
  * Fundraising → amount raised/needed + progress bar + "Donate" CTA (Phase 5a — live)
  * Participation → participant count/goal + progress bar + "Join"/"Leave" CTA (Phase 5b — live)
- * Goods-donation → items list + overall progress + "Donate goods" CTA (Phase 5c placeholder)
+ * Goods-donation → items list + overall progress + "Donate goods" CTA (Phase 5c — live)
  */
 function CampaignDetailPage() {
   const { slug } = useParams();
@@ -109,6 +125,18 @@ function CampaignDetailPage() {
   const [hasJoined, setHasJoined] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinStatusLoading, setJoinStatusLoading] = useState(false);
+
+  // ── Goods pledge dialog state (goods-donation) ─────────────────
+  const [pledgeOpen, setPledgeOpen] = useState(false);
+  const [pledgeItems, setPledgeItems] = useState([{ item: '', quantity: '' }]);
+  const [pledgeAddress, setPledgeAddress] = useState('');
+  const [pledgeDate, setPledgeDate] = useState('');
+  const [pledgeLoading, setPledgeLoading] = useState(false);
+  const [pledgeError, setPledgeError] = useState('');
+  const [pledgeCancelLoading, setPledgeCancelLoading] = useState(null); // donation _id being cancelled
+
+  // ── User's own pledges for this campaign ────────────────────────
+  const [myPledges, setMyPledges] = useState([]);
 
   const fetchCampaign = useCallback(async () => {
     setLoading(true);
@@ -165,11 +193,33 @@ function CampaignDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign?._id, campaign?.type, slug, isAuthenticated, authLoading]);
 
+  // ── Fetch user's pledges for this goods-donation campaign ──────
+  const fetchMyPledges = useCallback(async () => {
+    if (!isAuthenticated || !campaign || campaign.type !== 'goods-donation') return;
+    try {
+      const res = await goodsDonationsApi.getMyPledges();
+      const all = res.data?.donations ?? [];
+      // Filter to this campaign
+      const forCampaign = all.filter((d) => {
+        const cId = typeof d.campaign === 'object' ? d.campaign._id : d.campaign;
+        return cId === campaign._id;
+      });
+      setMyPledges(forCampaign);
+    } catch {
+      // Silently fail
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, campaign?._id, campaign?.type]);
+
+  useEffect(() => {
+    fetchMyPledges();
+  }, [fetchMyPledges]);
+
   /**
    * Auth-gated CTA click handler.
    * Fundraising → opens donate dialog.
    * Participation → join/leave flow (Phase 5b).
-   * Goods-donation → placeholder toast (Phase 5c).
+   * Goods-donation → opens pledge dialog (Phase 5c).
    */
   const handleCtaClick = () => {
     if (authLoading) return;
@@ -194,8 +244,15 @@ function CampaignDetailPage() {
       return;
     }
 
-    // Goods-donation — still placeholder
-    toast.info('Coming soon — this will be available in a future update.');
+    if (campaign?.type === 'goods-donation') {
+      // Reset pledge dialog state with one empty row
+      setPledgeItems([{ item: '', quantity: '' }]);
+      setPledgeAddress('');
+      setPledgeDate('');
+      setPledgeError('');
+      setPledgeOpen(true);
+      return;
+    }
   };
 
   // ── Join campaign (participation) ──────────────────────────────
@@ -324,6 +381,176 @@ function CampaignDetailPage() {
       label: 'Join campaign',
       icon: Users,
     };
+  };
+
+  // ── Goods-donation CTA edge-state logic ────────────────────────
+  const getGoodsCtaState = () => {
+    if (!campaign || campaign.type !== 'goods-donation') return null;
+
+    // Campaign not active
+    if (campaign.status !== 'active') {
+      return {
+        disabled: true,
+        label: campaign.status === 'closed' ? 'Campaign closed' : 'Campaign not active',
+        reason: campaign.status === 'closed'
+          ? 'This campaign is no longer accepting donations.'
+          : 'This campaign is not yet accepting donations.',
+      };
+    }
+
+    // All items fully received
+    const items = campaign.items ?? [];
+    const allFull = items.length > 0 && items.every((item) => (item.received ?? 0) >= item.needed);
+    if (allFull) {
+      return {
+        disabled: true,
+        label: 'All items fulfilled',
+        reason: 'All needed items have been received.',
+      };
+    }
+
+    return {
+      disabled: false,
+      label: 'Pledge goods',
+    };
+  };
+
+  // ── Multi-item goods pledge handlers ───────────────────────────
+  const handleItemChange = (index, value) => {
+    setPledgeItems((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, item: value, quantity: '' } : row)),
+    );
+    setPledgeError('');
+  };
+
+  const handleQuantityChange = (index, value) => {
+    setPledgeItems((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, quantity: value } : row)),
+    );
+    setPledgeError('');
+  };
+
+  const handleAddRow = () => {
+    setPledgeItems((prev) => [...prev, { item: '', quantity: '' }]);
+    setPledgeError('');
+  };
+
+  const handleRemoveRow = (index) => {
+    if (pledgeItems.length <= 1) return;
+    setPledgeItems((prev) => prev.filter((_, i) => i !== index));
+    setPledgeError('');
+  };
+
+  const getRowValidationError = (row) => {
+    if (!row.item) return '';
+    const selectedCampaignItem = campaign?.items?.find((i) => i.name === row.item);
+    if (!selectedCampaignItem) return 'Invalid item selected.';
+    const remaining = selectedCampaignItem.needed - (selectedCampaignItem.received ?? 0);
+    if (remaining <= 0) return `${selectedCampaignItem.name} is already fulfilled.`;
+
+    if (row.quantity !== '' && row.quantity !== undefined) {
+      const qty = Number(row.quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return 'Quantity must be at least 1.';
+      }
+      if (qty > remaining) {
+        return `Only ${remaining} ${selectedCampaignItem.name} still needed.`;
+      }
+    }
+    return '';
+  };
+
+  // ── Handle goods pledge submission ─────────────────────────────
+  const handlePledgeSubmit = async () => {
+    if (!campaign || pledgeItems.length === 0) return;
+
+    // Validate each row
+    const validatedItems = [];
+    for (let i = 0; i < pledgeItems.length; i++) {
+      const row = pledgeItems[i];
+      if (!row.item) {
+        setPledgeError(`Please select an item for row ${i + 1}.`);
+        return;
+      }
+      const selectedCampaignItem = campaign.items?.find((item) => item.name === row.item);
+      if (!selectedCampaignItem) {
+        setPledgeError(`Item "${row.item}" is not valid for this campaign.`);
+        return;
+      }
+      const qty = Number(row.quantity);
+      const remaining = selectedCampaignItem.needed - (selectedCampaignItem.received ?? 0);
+
+      if (!qty || isNaN(qty) || qty <= 0) {
+        setPledgeError(`Please enter a valid quantity for ${selectedCampaignItem.name}.`);
+        return;
+      }
+      if (qty > remaining) {
+        setPledgeError(`Only ${remaining} ${selectedCampaignItem.name} still needed.`);
+        return;
+      }
+      validatedItems.push({ item: row.item, quantity: qty });
+    }
+
+    // Check for duplicate items
+    const names = validatedItems.map((v) => v.item);
+    if (new Set(names).size !== names.length) {
+      setPledgeError('Please ensure each item type is only selected once.');
+      return;
+    }
+
+    if (!pledgeAddress.trim()) {
+      setPledgeError('Please enter a pickup address.');
+      return;
+    }
+    if (!pledgeDate) {
+      setPledgeError('Please select a preferred collection date.');
+      return;
+    }
+    const dateObj = new Date(pledgeDate);
+    if (isNaN(dateObj.getTime()) || dateObj <= new Date()) {
+      setPledgeError('Collection date must be in the future.');
+      return;
+    }
+
+    setPledgeError('');
+    setPledgeLoading(true);
+
+    try {
+      await goodsDonationsApi.pledgeGoods(slug, {
+        address: pledgeAddress.trim(),
+        items: validatedItems,
+        preferredCollectionDate: dateObj.toISOString(),
+      });
+
+      const summary = validatedItems.map((v) => `${v.quantity} × ${v.item}`).join(', ');
+      toast.success(`Pledged ${summary} — thank you!`);
+      setPledgeOpen(false);
+
+      // Quietly refetch campaign to get accurate server-computed goodsProgress
+      refetchCampaignQuietly();
+      // Also refresh user's pledges
+      fetchMyPledges();
+    } catch (err) {
+      setPledgeError(err?.message ?? 'Failed to submit pledge. Please try again.');
+    } finally {
+      setPledgeLoading(false);
+    }
+  };
+
+  // ── Handle pledge cancellation ─────────────────────────────────
+  const handleCancelPledge = async (donationId) => {
+    setPledgeCancelLoading(donationId);
+    try {
+      await goodsDonationsApi.cancelPledge(donationId);
+      toast.success('Pledge cancelled.');
+      // Refresh pledges and campaign data
+      fetchMyPledges();
+      refetchCampaignQuietly();
+    } catch (err) {
+      toast.error(err?.message ?? 'Failed to cancel pledge.');
+    } finally {
+      setPledgeCancelLoading(null);
+    }
   };
 
   /**
@@ -466,7 +693,8 @@ function CampaignDetailPage() {
         return Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 100) : 0;
       }
       case 'goods-donation':
-        return campaign.goodsProgress ?? 0;
+        // Recompute locally from items to avoid stale server virtual
+        return computeGoodsProgress(campaign.items);
       default:
         return 0;
     }
@@ -474,6 +702,34 @@ function CampaignDetailPage() {
 
   const rawProgress = getProgress();
   const progress = Number.isFinite(rawProgress) ? Math.min(Math.max(rawProgress, 0), 100) : 0;
+
+  // ── Multi-item pledge dialog helper derivations ────────────────
+  const totalPledgeQuantity = pledgeItems.reduce(
+    (sum, row) => sum + (Number(row.quantity) > 0 ? Number(row.quantity) : 0),
+    0,
+  );
+
+  const availableCampaignItems = (campaign?.items ?? []).filter(
+    (item) => item.needed - (item.received ?? 0) > 0,
+  );
+  const canAddMoreItems = pledgeItems.length < availableCampaignItems.length;
+
+  const hasRowErrors = pledgeItems.some((row) => {
+    if (!row.item || !row.quantity) return true;
+    const q = Number(row.quantity);
+    if (isNaN(q) || q <= 0) return true;
+    const item = campaign?.items?.find((i) => i.name === row.item);
+    if (!item) return true;
+    const rem = item.needed - (item.received ?? 0);
+    return q > rem;
+  });
+
+  const isPledgeSubmitDisabled =
+    pledgeLoading ||
+    pledgeItems.length === 0 ||
+    hasRowErrors ||
+    !pledgeAddress.trim() ||
+    !pledgeDate;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -666,6 +922,27 @@ function CampaignDetailPage() {
                   {joinStatusLoading ? 'Checking…' : (ctaState?.label ?? config.ctaLabel)}
                 </Button>
               );
+            })() : campaign.type === 'goods-donation' ? (() => {
+              const goodsState = getGoodsCtaState();
+              return (
+                <>
+                  <Button
+                    size="lg"
+                    className="detail-cta-button"
+                    onClick={handleCtaClick}
+                    disabled={goodsState?.disabled}
+                  >
+                    <Package className="size-4" data-icon="inline-start" aria-hidden="true" />
+                    {goodsState?.label ?? config.ctaLabel}
+                  </Button>
+                  {goodsState?.reason && (
+                    <div className="detail-cta-disabled-reason">
+                      <AlertCircle className="size-3" aria-hidden="true" />
+                      {goodsState.reason}
+                    </div>
+                  )}
+                </>
+              );
             })() : (
               <Button
                 size="lg"
@@ -676,6 +953,42 @@ function CampaignDetailPage() {
                 <CtaIcon className="size-4" data-icon="inline-start" aria-hidden="true" />
                 {campaign.status === 'closed' ? 'Campaign closed' : config.ctaLabel}
               </Button>
+            )}
+
+            {/* My pledges (goods-donation) */}
+            {campaign.type === 'goods-donation' && isAuthenticated && myPledges.length > 0 && (
+              <>
+                <span className="pledge-section-heading">Your pledges</span>
+                <div className="pledge-list">
+                  {myPledges.map((pledge) => (
+                    <div key={pledge._id} className="pledge-card">
+                      <div className="pledge-card-header">
+                        <span className="pledge-card-items">
+                          {pledge.items?.map((pi) => `${pi.quantity} × ${pi.item}`).join(', ')}
+                        </span>
+                        <span className={`pledge-card-status pledge-card-status--${pledge.status}`}>
+                          {pledge.status}
+                        </span>
+                      </div>
+                      <span className="pledge-card-meta">
+                        {pledge.createdAt && formatDistanceToNow(new Date(pledge.createdAt), { addSuffix: true })}
+                      </span>
+                      {pledge.status === 'pledged' && (
+                        <div className="pledge-card-actions">
+                          <button
+                            type="button"
+                            className="pledge-card-action pledge-card-action--cancel"
+                            disabled={pledgeCancelLoading === pledge._id}
+                            onClick={() => handleCancelPledge(pledge._id)}
+                          >
+                            {pledgeCancelLoading === pledge._id ? 'Cancelling…' : 'Cancel pledge'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             {/* Creator info */}
@@ -767,6 +1080,231 @@ function CampaignDetailPage() {
               >
                 <Heart className="size-4" data-icon="inline-start" aria-hidden="true" />
                 Donate {donateAmount && Number(donateAmount) > 0 ? formatCurrency(Number(donateAmount)) : ''}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Goods pledge dialog (multi-item) ── */}
+      {campaign.type === 'goods-donation' && (
+        <Dialog open={pledgeOpen} onOpenChange={setPledgeOpen}>
+          <DialogContent showCloseButton={!pledgeLoading} className="max-w-lg sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Pledge Goods</DialogTitle>
+              <DialogDescription>
+                Pledge items for <strong>{campaign.title}</strong>. You will be contacted for collection.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="pledge-dialog-body">
+              {/* Multi-item picker section */}
+              <div className="pledge-dialog-field">
+                <div className="pledge-dialog-section-header">
+                  <label className="pledge-dialog-label">
+                    Items to pledge
+                  </label>
+                  <span className="pledge-dialog-hint">
+                    {pledgeItems.length} {pledgeItems.length === 1 ? 'item' : 'items'}
+                  </span>
+                </div>
+
+                <div className="pledge-items-list">
+                  {pledgeItems.map((row, index) => {
+                    const rowError = getRowValidationError(row);
+                    const selectedCampaignItem = campaign.items?.find((i) => i.name === row.item);
+                    const remaining = selectedCampaignItem
+                      ? selectedCampaignItem.needed - (selectedCampaignItem.received ?? 0)
+                      : 0;
+                    const itemPct =
+                      selectedCampaignItem && selectedCampaignItem.needed > 0
+                        ? Math.min((selectedCampaignItem.received / selectedCampaignItem.needed) * 100, 100)
+                        : 0;
+
+                    return (
+                      <div key={index} className="pledge-item-row" data-testid={`pledge-item-row-${index}`}>
+                        <div className="pledge-item-row-controls">
+                          {/* Item selector */}
+                          <div className="pledge-item-row-select-wrapper">
+                            <select
+                              id={`pledge-item-${index}`}
+                              className="pledge-dialog-select"
+                              value={row.item}
+                              onChange={(e) => handleItemChange(index, e.target.value)}
+                              disabled={pledgeLoading}
+                              aria-label={`Select item for row ${index + 1}`}
+                            >
+                              <option value="">Choose an item…</option>
+                              {(campaign.items ?? []).map((item) => {
+                                const itemRemaining = item.needed - (item.received ?? 0);
+                                const isFull = itemRemaining <= 0;
+                                const isChosenElsewhere = pledgeItems.some(
+                                  (other, oIdx) => oIdx !== index && other.item === item.name,
+                                );
+                                const isDisabled = isFull || isChosenElsewhere;
+                                let optLabel = item.name;
+                                if (isFull) {
+                                  optLabel += ' (fulfilled)';
+                                } else if (isChosenElsewhere) {
+                                  optLabel += ' (already selected)';
+                                } else {
+                                  optLabel += ` (${itemRemaining} still needed)`;
+                                }
+
+                                return (
+                                  <option key={item.name} value={item.name} disabled={isDisabled}>
+                                    {optLabel}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+
+                          {/* Quantity */}
+                          <div className="pledge-item-row-qty-wrapper">
+                            <input
+                              id={`pledge-quantity-${index}`}
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="Qty"
+                              value={row.quantity}
+                              onChange={(e) => handleQuantityChange(index, e.target.value)}
+                              disabled={pledgeLoading || !row.item}
+                              className="pledge-dialog-input"
+                              aria-label={`Quantity for row ${index + 1}`}
+                            />
+                          </div>
+
+                          {/* Remove row button */}
+                          <button
+                            type="button"
+                            className="pledge-item-row-remove"
+                            onClick={() => handleRemoveRow(index)}
+                            disabled={pledgeLoading || pledgeItems.length <= 1}
+                            title={pledgeItems.length <= 1 ? 'At least one item required' : 'Remove item'}
+                            aria-label={`Remove row ${index + 1}`}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        {/* Item progress info */}
+                        {row.item && selectedCampaignItem && (
+                          <div className="pledge-dialog-item-info">
+                            <div className="pledge-dialog-item-progress">
+                              <span className="pledge-dialog-item-progress-text">
+                                <strong>{selectedCampaignItem.received ?? 0}</strong> of <strong>{selectedCampaignItem.needed}</strong> received
+                              </span>
+                              <div className="pledge-dialog-item-progress-track">
+                                <div
+                                  className="pledge-dialog-item-progress-fill"
+                                  style={{ width: `${itemPct}%` }}
+                                />
+                              </div>
+                            </div>
+                            {remaining > 0 ? (
+                              <span className="pledge-dialog-item-remaining">{remaining} needed</span>
+                            ) : (
+                              <span className="pledge-dialog-item-full">Fulfilled</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Row validation error */}
+                        {rowError && (
+                          <div className="pledge-item-row-error" role="alert">
+                            <AlertCircle className="size-3 flex-shrink-0" aria-hidden="true" />
+                            <span>{rowError}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add another item button */}
+                <button
+                  type="button"
+                  className="pledge-add-row-btn"
+                  onClick={handleAddRow}
+                  disabled={pledgeLoading || !canAddMoreItems}
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  <span>
+                    {canAddMoreItems
+                      ? 'Add another item'
+                      : 'All available items selected'}
+                  </span>
+                </button>
+              </div>
+
+              {/* Address */}
+              <div className="pledge-dialog-field">
+                <label className="pledge-dialog-label" htmlFor="pledge-address">
+                  Pickup address
+                </label>
+                <Input
+                  id="pledge-address"
+                  type="text"
+                  placeholder="Your address for collection"
+                  value={pledgeAddress}
+                  onChange={(e) => {
+                    setPledgeAddress(e.target.value);
+                    setPledgeError('');
+                  }}
+                  disabled={pledgeLoading}
+                />
+              </div>
+
+              {/* Collection date */}
+              <div className="pledge-dialog-field">
+                <label className="pledge-dialog-label" htmlFor="pledge-date">
+                  Preferred collection date
+                </label>
+                <Input
+                  id="pledge-date"
+                  type="date"
+                  min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                  value={pledgeDate}
+                  onChange={(e) => {
+                    setPledgeDate(e.target.value);
+                    setPledgeError('');
+                  }}
+                  disabled={pledgeLoading}
+                />
+              </div>
+
+              {/* General error banner */}
+              {pledgeError && (
+                <p className="pledge-dialog-error" role="alert">
+                  <AlertCircle className="size-3" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} aria-hidden="true" />
+                  {pledgeError}
+                </p>
+              )}
+
+              {/* Loading status */}
+              {pledgeLoading && (
+                <p className="pledge-dialog-status">Submitting pledge…</p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setPledgeOpen(false)}
+                disabled={pledgeLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePledgeSubmit}
+                loading={pledgeLoading}
+                disabled={isPledgeSubmitDisabled}
+                className="pledge-dialog-submit-btn"
+              >
+                <Package className="size-4" data-icon="inline-start" aria-hidden="true" />
+                Pledge {totalPledgeQuantity > 0 ? `${totalPledgeQuantity} items` : ''}
               </Button>
             </DialogFooter>
           </DialogContent>

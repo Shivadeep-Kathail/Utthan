@@ -1,8 +1,10 @@
-import { LayoutDashboard, Megaphone, Heart, Bell } from 'lucide-react';
+import { LayoutDashboard, Megaphone, Heart, Bell, Users } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { MyCampaignsTab } from '@/components/dashboard/MyCampaignsTab';
+import { MyDonationsTab } from '@/components/dashboard/MyDonationsTab';
+import { ParticipationTab } from '@/components/dashboard/ParticipationTab';
 
 /**
  * User dashboard page — tabbed container for activity data.
@@ -10,7 +12,8 @@ import { MyCampaignsTab } from '@/components/dashboard/MyCampaignsTab';
  * Restructured: account-settings components moved to /profile (ProfilePage).
  * Tabs:
  *  - My Campaigns  → Phase 4b (list, edit, delete own campaigns)
- *  - My Donations  → Phase 5/6 content
+ *  - My Donations  → Phase 6a (monetary donations + goods pledges)
+ *  - Participation → Phase 6a (campaigns joined)
  *  - Notifications → Phase 8 content (Socket.io-based)
  */
 function DashboardPage() {
@@ -44,6 +47,10 @@ function DashboardPage() {
             <Heart className="size-4" data-icon="inline-start" aria-hidden="true" />
             My Donations
           </TabsTrigger>
+          <TabsTrigger value="participation">
+            <Users className="size-4" data-icon="inline-start" aria-hidden="true" />
+            Participation
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="size-4" data-icon="inline-start" aria-hidden="true" />
             Notifications
@@ -55,11 +62,11 @@ function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="donations">
-          <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border p-8">
-            <p className="text-sm text-muted-foreground">
-              Your donation history will appear here. Coming soon.
-            </p>
-          </div>
+          <MyDonationsTab />
+        </TabsContent>
+
+        <TabsContent value="participation">
+          <ParticipationTab />
         </TabsContent>
 
         <TabsContent value="notifications">

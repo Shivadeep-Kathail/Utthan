@@ -139,6 +139,17 @@ export function getParticipationStatus(slug) {
     .then((res) => res.data);
 }
 
+/**
+ * Get all participation campaigns the current user has joined.
+ * Response: { status, results, data: { participations } }
+ * Each participation: { _id, createdAt, campaign: { _id, title, slug, status } | null }
+ */
+export function getMyParticipations() {
+  return axiosClient
+    .get('/campaign/my-participations')
+    .then((res) => res.data);
+}
+
 export function uploadImage(file) {
   const formData = new FormData();
   formData.append('image', file);

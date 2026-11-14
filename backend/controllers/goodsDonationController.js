@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const GoodsDonation = require('../models/GoodsDonationModel');
 const Campaign = require('../models/campaignModel');
 const AppError = require('../utils/appError');
@@ -313,16 +314,41 @@ exports.markGoodsDonationCollected = async (req, res, next) => {
     );
   }
 
-  for (const donationItem of donation.items) {
-    const campaignItem = findCampaignItem(campaign, donationItem.item);
-    if (campaignItem) {
-      campaignItem.received += donationItem.quantity;
-    }
+  // Use a transaction to ensure the donation status change and campaign
+  // item increments succeed or fail together. Within the transaction,
+  // use atomic $inc to avoid lost-update races when concurrent collects
+  // both read the same stale received value.
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      // 1. Atomically increment each campaign item's received count.
+      //    Using $inc avoids the read-modify-write race where two
+      //    concurrent collects load the same received value, both add
+      //    their quantity, and the last save overwrites the first.
+      for (const donationItem of donation.items) {
+        const campaignItem = findCampaignItem(campaign, donationItem.item);
+        if (campaignItem) {
+          await Campaign.updateOne(
+            { _id: campaign._id, 'items.name': campaignItem.name },
+            { $inc: { 'items.$.received': donationItem.quantity } },
+            { session },
+          );
+        }
+      }
+
+      // 2. Mark the donation as collected (after the increment, so a
+      //    failure in step 1 doesn't leave a "collected" donation
+      //    whose items were never counted).
+      donation.status = 'collected';
+      await donation.save({ session });
+    });
+  } finally {
+    await session.endSession();
   }
 
-  donation.status = 'collected';
-  await donation.save();
-  await campaign.save();
+  // Re-read the campaign so the response includes the latest received
+  // counts (the in-memory campaign object is stale after $inc).
+  const updatedCampaign = await Campaign.findById(campaign._id);
 
   res.status(200).json({
     status: 'success',
