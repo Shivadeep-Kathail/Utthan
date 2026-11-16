@@ -29,7 +29,7 @@
 
 Every architectural decision in this project is deliberate and documented below, from the payment flow to the auth model. See [Key design decisions](#key-design-decisions).
 
-> **Status:** actively under development. The backend API is feature-complete for the core flows; the frontend currently covers auth, campaign discovery, campaign detail and campaign creation, with checkout and dashboards next. See [Project status](#project-status).
+> **Status:** actively under development. The backend API is feature-complete for the core flows, and the frontend now covers the full user journey: auth, discovery, creating and editing campaigns, donation checkout, joining, goods pledging and a personal dashboard. The admin and moderator panel, real-time features and AI features are next. See [Project status](#project-status).
 
 **Live demo:** coming soon.
 
@@ -43,17 +43,24 @@ Every architectural decision in this project is deliberate and documented below,
 - **Moderation:** new campaigns start as `pending` and go through an admin/moderator approval workflow (approve, reject, flag, close, restore)
 - **Discovery:** filter by type and category, sort, paginate, and limit fields; filters are synced to the URL on the frontend
 - **Payments:** Razorpay orders, HMAC signature verification and a signed webhook, with idempotent confirmation
-- **Goods donations:** pledge, edit, cancel and mark collected; pledges are validated against the quantity still needed
+- **Goods donations:** pledge, edit, cancel and mark collected; pledges are validated against the quantity still needed, and marking a pledge collected updates the campaign's received counts inside a MongoDB transaction
 - **Participation:** join and leave with one entry per user, a participant cap, and a creator view of participants
 - **Image uploads:** JPEG, PNG, WebP or GIF up to 5 MB
-- **Create-campaign flow:** type-specific form with validation (react-hook-form + zod), image upload and a Leaflet map picker with address search
+- **Create and edit campaigns:** one type-specific form (react-hook-form + zod) used in both create and edit modes, with image upload and a Leaflet map picker with address search
+- **Donation checkout:** Razorpay Checkout opens from the campaign page with preset or custom amounts, verifies the payment on success, and refreshes the campaign's progress
+- **Join and pledge from the campaign page:** one-click join and leave for participation campaigns, and a multi-item goods pledge form with collection address and preferred date, with your own pledges listed and cancellable on the same page
+- **Dashboard:** *My Campaigns* (status badges, edit, delete, and a manage dialog), *My Donations* (payments and goods pledges, total donated, cancel a pledge) and *Participation* (campaigns you joined, with leave)
+- **Creator tools:** the manage dialog shows a campaign's donations, participants or goods pledges depending on its type, and lets the creator mark pledges as collected
+- **Profile and settings:** a dedicated page for profile updates, password change and account deletion
+- **Role-aware navigation:** the navbar shows an Admin link to admins and moderators
 - **Security layers:** Helmet, credentialed CORS, rate limiting, NoSQL-injection sanitization, XSS sanitization, HTTP parameter pollution protection, request size limits and centralized error handling
 - **UI:** responsive, light and dark themes, accessible component primitives
 
 **In progress and planned**
 
-- Donation checkout, join and pledge actions in the UI (the Razorpay Checkout SDK is already loaded)
-- User dashboard and admin panel
+- Admin and moderator panel in the UI (the moderation and user-management endpoints already exist)
+- Real-time notifications (the dashboard tab is a placeholder)
+- Live platform stats on the landing page (currently placeholder values)
 - Nearby-campaign discovery using MongoDB geospatial queries
 - Live campaign progress over WebSockets
 - AI-assisted verification of campaign documents with Gemini Vision
@@ -83,7 +90,7 @@ Only `active` campaigns accept donations, pledges and participants. The public l
 
 ## How a donation works
 
-The client-side verify call gives the donor instant feedback, and Razorpay's server-to-server webhook is the safety net if the browser never reports back. Both paths verify an HMAC signature and only act on a donation that is still in the `created` state, so whichever arrives first confirms the payment and the other is ignored.
+The client-side verify call gives the donor instant feedback, and Razorpay's server-to-server webhook is the safety net if the browser never reports back. Both paths verify an HMAC signature and only act on a donation that is still in the `created` state, so whichever arrives first confirms the payment and the other is ignored. On the frontend, Checkout is opened with the public key from `VITE_RAZORPAY_KEY_ID`, and the campaign is refetched after a successful verification so the progress bar updates immediately.
 
 ```mermaid
 sequenceDiagram
@@ -110,6 +117,8 @@ sequenceDiagram
 - **Idempotent, signature-verified payments.** Razorpay signatures are checked with HMAC on both confirmation paths, the webhook verifies the raw request body, and status guards prevent double-counting.
 - **Cookie-based auth.** The JWT is issued as an httpOnly cookie (`Secure` in production). The React client never reads, stores or forwards the token, which removes the usual XSS token-theft path. Signup ignores any client-supplied role, and changing a password invalidates older tokens.
 - **Composable RBAC.** `protect` and `requireRole(...)` middleware compose per route, so permissions are declared where the route is defined instead of being scattered through controllers.
+- **Transactional goods collection.** When a creator marks a pledge as collected, the status change and the campaign's per-item `received` increments run in one MongoDB transaction using atomic `$inc`, so concurrent collections cannot overwrite each other.
+- **Guard rails on self-dealing.** Creators cannot donate to or join their own campaigns, and participation is capped by `participantGoal` when one is set.
 - **Razorpay as the sole gateway.** Chosen for INR-first support and UPI.
 - **Slugs for public URLs, ObjectIds internally.** A slug is generated once at creation and never changes, so shared links survive title edits. Duplicate titles get a numeric suffix.
 - **Soft deletes.** Campaigns and users are flagged rather than removed, and admins can restore or permanently delete.
@@ -135,10 +144,20 @@ Utthan/
 ├── frontend/
 │   ├── index.html             # loads the Razorpay Checkout SDK
 │   └── src/
-│       ├── api/               # Axios client and API modules
-│       ├── components/        # auth, campaigns, dashboard, home, layout, feedback, ui
+│       ├── api/               # Axios client and modules: auth, campaigns, donations,
+│       │                      # goods donations, payments
+│       ├── components/
+│       │   ├── auth/          # route guards, auth layout
+│       │   ├── campaigns/     # card, form, image upload, location picker
+│       │   ├── dashboard/     # my campaigns, my donations, participation,
+│       │   │                  # manage dialog, account settings forms
+│       │   ├── home/          # hero, stats, campaign types, featured campaigns
+│       │   ├── layout/        # navbar, footer, global layout
+│       │   ├── feedback/      # spinners, skeletons, error states
+│       │   └── ui/            # shadcn/ui primitives
 │       ├── context/           # AuthContext
-│       ├── pages/
+│       ├── pages/             # home, campaigns, campaign detail, create, edit,
+│       │                      # dashboard, profile, admin (placeholder), auth pages
 │       ├── utils/             # API error normalization
 │       └── router.jsx
 ├── LICENSE
@@ -152,8 +171,8 @@ All routes are prefixed with `/api`. Everything except the public routes needs a
 | Area | Base path | Endpoints |
 | --- | --- | --- |
 | Users | `/users` | `POST /signup` `/login` `/logout` `/forgotPassword` · `PATCH /resetPassword/:token` · `GET /me` · `PATCH /updateMe` `/updatePassword` · `DELETE /deleteMe` |
-| Campaigns | `/campaign` | `GET /` (public) · `POST /` · `GET /my-campaigns` · `GET /:slug` (public) · `PATCH /:slug` · `DELETE /:slug` |
-| Campaign sub-resources | `/campaign/:slug` | `POST /join` · `DELETE /leave` · `GET /participants` (creator or admin) · `GET /donations` (creator or admin) |
+| Campaigns | `/campaign` | `GET /` (public) · `POST /` · `GET /my-campaigns` · `GET /my-participations` · `GET /:slug` (public) · `PATCH /:slug` · `DELETE /:slug` |
+| Campaign sub-resources | `/campaign/:slug` | `POST /join` · `DELETE /leave` · `GET /participation` (am I joined?) · `GET /participants` (creator or admin) · `GET /donations` (creator or admin) |
 | Donations | `/donations` | `GET /me` · `GET /:id` · `GET /admin` (admin, moderator) |
 | Payments | `/payments` | `POST /create-order` · `POST /verify-payment` |
 | Webhook | `/webhooks/razorpay` | `POST` (signature-verified, raw body) |
@@ -169,8 +188,8 @@ The listing endpoints accept `type`, `category`, `sort` (comma-separated, `-` fo
 ### Prerequisites
 
 - Node.js 20.19 or newer (22.12+ also works), as required by Vite 8 and Mongoose 9
-- A MongoDB database (Atlas or local)
-- Razorpay **test-mode** API keys
+- A MongoDB database. Atlas works out of the box; a local MongoDB must run as a **replica set**, because marking goods pledges as collected uses transactions
+- Razorpay **test-mode** API keys (the key ID is needed by both backend and frontend)
 - A Mailtrap sandbox inbox for password-reset emails
 
 ### 1. Clone
@@ -227,18 +246,20 @@ npm run dev                          # http://localhost:8081
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api
+VITE_RAZORPAY_KEY_ID=<your-razorpay-test-key-id>   # same key ID as the backend; public, never the secret
 ```
 
 > The frontend runs on port **8081** and the backend's CORS is configured for `http://localhost:8081` with credentials, so keep those two in sync if you change either.
 
 ### 4. Try it out
 
-1. Sign up through the UI, then create a campaign at `/create-campaign`. It starts as `pending`.
+1. Sign up through the UI, then create a campaign at `/create-campaign`. It starts as `pending`, and you can see it, edit it or delete it from the *My Campaigns* tab on your dashboard.
 2. Approve it so it appears in the public listing. There is no admin UI yet, so either use the helper script or call the admin API:
 ```bash
    node scripts/approveCampaign.js <campaign-slug>    # or: --all
 ```
 3. Promote an account to admin by editing its `role` field in MongoDB (signup deliberately ignores any role in the request). After that, `PATCH /api/admin/campaigns/:id/approve` works.
+4. Sign in with a **second account** to try the supporter side: creators cannot donate to or join their own campaigns. Donate through Razorpay test mode, join a participation campaign, or pledge goods, then watch the activity appear on the dashboards of both accounts.
 
 ### Testing payments locally
 
@@ -278,10 +299,14 @@ VITE_API_BASE_URL=http://localhost:8080/api
 - [x] Campaign discovery with URL-synced filters, sorting and pagination
 - [x] Type-specific campaign detail pages
 - [x] Create-campaign flow with image upload and map location picker
-- [ ] Donation checkout with Razorpay Checkout
-- [ ] Join and goods-pledge actions
-- [ ] Dashboard: my campaigns, my donations, notifications
-- [ ] Admin and moderator panel
+- [x] Edit-campaign flow (shared form in edit mode)
+- [x] Donation checkout with Razorpay Checkout
+- [x] Join, leave and goods-pledge actions
+- [x] Dashboard: my campaigns (with manage dialog), my donations and pledges, participation
+- [x] Profile and account settings page
+- [ ] Dashboard notifications (tab is a placeholder)
+- [ ] Admin and moderator panel (route exists, page is a placeholder)
+- [ ] Role-based route guard for `/admin`
 - [ ] Nearby-campaign map discovery
 - [ ] Live stats on the landing page (currently placeholder values)
 
@@ -293,7 +318,7 @@ VITE_API_BASE_URL=http://localhost:8080/api
 
 ## Roadmap
 
-1. Finish the core user journeys: checkout, joining, pledging, dashboards and the admin panel.
+1. Finish the remaining core journeys: the admin and moderator panel, role-based route guarding, notifications and real landing-page stats.
 2. Add nearby discovery and real-time progress.
 3. Add the AI features in this order: auto-tagger, trust scorer, personalized feed.
 4. Deploy, and publish API documentation.
