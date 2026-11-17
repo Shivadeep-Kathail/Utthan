@@ -1,6 +1,21 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 
+const payoutDetailsSchema = new mongoose.Schema(
+  {
+    method: {
+      type: String,
+      enum: ['upi', 'bank'],
+      required: [true, 'Payout method is required'],
+    },
+    upiId: { type: String, trim: true },
+    accountHolderName: { type: String, trim: true },
+    accountNumber: { type: String, trim: true },
+    ifsc: { type: String, trim: true, uppercase: true },
+  },
+  { _id: false },
+);
+
 const campaignSchema = new mongoose.Schema(
   {
     title: {
@@ -163,6 +178,16 @@ const campaignSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    payoutDetails: {
+      type: payoutDetailsSchema,
+      select: false,
+      required: [
+        function () {
+          return this.type === 'fundraising';
+        },
+        'Payout details are required for fundraising campaigns',
+      ],
+    },
   },
   {
     timestamps: true,
@@ -178,6 +203,41 @@ campaignSchema.index({ category: 1 });
 campaignSchema.index({ status: 1 });
 campaignSchema.index({ type: 1 });
 campaignSchema.index({ createdAt: -1 });
+
+campaignSchema.pre('validate', function () {
+  // Skip if no payoutDetails or not fundraising
+  if (!this.payoutDetails) return;
+
+  const pd = this.payoutDetails;
+
+  if (pd.method === 'upi') {
+    if (!pd.upiId || !/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(pd.upiId)) {
+      this.invalidate('payoutDetails.upiId', 'Invalid UPI ID format');
+    }
+    // Clear bank fields
+    pd.accountHolderName = undefined;
+    pd.accountNumber = undefined;
+    pd.ifsc = undefined;
+  } else if (pd.method === 'bank') {
+    if (!pd.accountHolderName || !pd.accountHolderName.trim()) {
+      this.invalidate(
+        'payoutDetails.accountHolderName',
+        'Account holder name is required for bank transfers',
+      );
+    }
+    if (!pd.accountNumber || !/^\d{9,18}$/.test(pd.accountNumber)) {
+      this.invalidate(
+        'payoutDetails.accountNumber',
+        'Account number must be 9-18 digits',
+      );
+    }
+    if (!pd.ifsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(pd.ifsc.toUpperCase())) {
+      this.invalidate('payoutDetails.ifsc', 'Invalid IFSC code format');
+    }
+    // Clear UPI field
+    pd.upiId = undefined;
+  }
+});
 
 campaignSchema.pre('save', async function () {
   if (!this.isNew) return;

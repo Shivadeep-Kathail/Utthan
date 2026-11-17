@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import {
   Package,
   Users,
@@ -18,6 +19,7 @@ import {
   getParticipants,
   getCampaignDonations,
   getCampaignBySlug,
+  getPayoutDetails,
 } from '@/api/campaigns.api';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -555,6 +557,19 @@ function ManageDonations({ campaign }) {
 /* ── Main Manage Campaign Dialog ───────────────────────────────── */
 
 function ManageCampaignDialog({ campaign, open, onOpenChange, onCampaignUpdate }) {
+  const [payoutMissing, setPayoutMissing] = useState(false);
+
+  useEffect(() => {
+    if (!campaign || campaign.type !== 'fundraising' || !open) {
+      setPayoutMissing(false);
+      return;
+    }
+
+    getPayoutDetails(campaign.slug)
+      .then((res) => setPayoutMissing(!res.data?.payoutDetails))
+      .catch(() => setPayoutMissing(false));
+  }, [campaign, open]);
+
   if (!campaign) return null;
 
   const TypeIcon =
@@ -588,6 +603,25 @@ function ManageCampaignDialog({ campaign, open, onOpenChange, onCampaignUpdate }
         </DialogHeader>
 
         <div className="py-2 flex-1 overflow-y-auto">
+          {/* Payout details warning for fundraising campaigns */}
+          {campaign.type === 'fundraising' && payoutMissing && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 mb-3">
+              <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" aria-hidden="true" />
+              <div className="text-xs text-amber-700 dark:text-amber-300">
+                <p className="font-medium">Payout details not set</p>
+                <p className="mt-0.5">
+                  Add payout details so we can send you the funds raised.{' '}
+                  <Link
+                    to={`/campaigns/${campaign.slug}/edit`}
+                    className="font-medium underline underline-offset-2"
+                  >
+                    Edit campaign
+                  </Link>
+                </p>
+              </div>
+            </div>
+          )}
+
           {campaign.type === 'goods-donation' && (
             <ManageGoodsPledges
               campaign={campaign}

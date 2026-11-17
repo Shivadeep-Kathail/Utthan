@@ -69,6 +69,7 @@ const campaignSchema = z.preprocess(
   (val) => {
     const d = { ...val };
     if (d.type !== 'fundraising') d.amountNeeded = undefined;
+    if (d.type !== 'fundraising') d.payoutDetails = undefined;
     if (d.type !== 'participation') d.participantGoal = undefined;
     if (d.type !== 'goods-donation') d.items = undefined;
     return d;
@@ -98,6 +99,13 @@ const campaignSchema = z.preprocess(
       items: z.array(itemSchema).optional(),
       coverImage: z.string().min(1, 'Cover image is required'),
       location: locationSchema,
+      payoutDetails: z.object({
+        method: z.enum(['upi', 'bank']),
+        upiId: z.string().optional(),
+        accountHolderName: z.string().optional(),
+        accountNumber: z.string().optional(),
+        ifsc: z.string().optional(),
+      }).optional(),
     })
     .refine(
       (data) => {
@@ -124,6 +132,53 @@ const campaignSchema = z.preprocess(
         return true;
       },
       { message: 'At least one item is required', path: ['items'] },
+    )
+    .refine(
+      (data) => {
+        if (data.type !== 'fundraising') return true;
+        return data.payoutDetails != null;
+      },
+      { message: 'Payout details are required for fundraising campaigns', path: ['payoutDetails'] },
+    )
+    .refine(
+      (data) => {
+        if (data.type !== 'fundraising' || !data.payoutDetails) return true;
+        if (data.payoutDetails.method === 'upi') {
+          return data.payoutDetails.upiId && /^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(data.payoutDetails.upiId);
+        }
+        return true;
+      },
+      { message: 'Enter a valid UPI ID (e.g. name@bank)', path: ['payoutDetails', 'upiId'] },
+    )
+    .refine(
+      (data) => {
+        if (data.type !== 'fundraising' || !data.payoutDetails) return true;
+        if (data.payoutDetails.method === 'bank') {
+          return data.payoutDetails.accountHolderName && data.payoutDetails.accountHolderName.trim().length > 0;
+        }
+        return true;
+      },
+      { message: 'Account holder name is required', path: ['payoutDetails', 'accountHolderName'] },
+    )
+    .refine(
+      (data) => {
+        if (data.type !== 'fundraising' || !data.payoutDetails) return true;
+        if (data.payoutDetails.method === 'bank') {
+          return data.payoutDetails.accountNumber && /^\d{9,18}$/.test(data.payoutDetails.accountNumber);
+        }
+        return true;
+      },
+      { message: 'Account number must be 9-18 digits', path: ['payoutDetails', 'accountNumber'] },
+    )
+    .refine(
+      (data) => {
+        if (data.type !== 'fundraising' || !data.payoutDetails) return true;
+        if (data.payoutDetails.method === 'bank') {
+          return data.payoutDetails.ifsc && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(data.payoutDetails.ifsc.toUpperCase());
+        }
+        return true;
+      },
+      { message: 'Invalid IFSC code (e.g. HDFC0001234)', path: ['payoutDetails', 'ifsc'] },
     ),
 );
 
@@ -151,6 +206,14 @@ function flattenErrors(errors, prefix = '') {
  * data for edit mode.
  */
 function buildDefaults(initialData) {
+  const defaultPayout = {
+    method: 'upi',
+    upiId: '',
+    accountHolderName: '',
+    accountNumber: '',
+    ifsc: '',
+  };
+
   const base = {
     title: '',
     description: '',
@@ -165,6 +228,7 @@ function buildDefaults(initialData) {
       coordinates: [],
       address: '',
     },
+    payoutDetails: defaultPayout,
   };
 
   if (!initialData) return base;
@@ -188,6 +252,15 @@ function buildDefaults(initialData) {
           address: initialData.location.address || '',
         }
       : base.location,
+    payoutDetails: initialData.payoutDetails
+      ? {
+          method: initialData.payoutDetails.method || 'upi',
+          upiId: initialData.payoutDetails.upiId || '',
+          accountHolderName: initialData.payoutDetails.accountHolderName || '',
+          accountNumber: initialData.payoutDetails.accountNumber || '',
+          ifsc: initialData.payoutDetails.ifsc || '',
+        }
+      : defaultPayout,
   };
 }
 
@@ -224,17 +297,21 @@ function CampaignForm({ mode = 'create', initialData, onSubmit, isSubmitting }) 
   const handleFormSubmit = async (data) => {
     // Clean up type-conditional fields before sending
     const payload = { ...data };
-    if (payload.type !== 'fundraising') delete payload.amountNeeded;
+    if (payload.type !== 'fundraising') {
+      delete payload.amountNeeded;
+      delete payload.payoutDetails;
+    }
     if (payload.type !== 'participation') delete payload.participantGoal;
     if (payload.type !== 'goods-donation') delete payload.items;
 
     // In edit mode, the backend only accepts: title, description, category,
-    // coverImage, images, location. Strip type-related fields.
+    // coverImage, images, location, payoutDetails. Strip type-related fields.
     if (isEdit) {
       delete payload.type;
       delete payload.amountNeeded;
       delete payload.participantGoal;
       delete payload.items;
+      // payoutDetails is kept for fundraising edits — it's in the PATCH whitelist
     }
 
     await onSubmit(payload);
@@ -403,6 +480,110 @@ function CampaignForm({ mode = 'create', initialData, onSubmit, isSubmitting }) 
               </p>
             )}
           </div>
+        </fieldset>
+      )}
+
+      {/* ── Payout Details (fundraising only) ────────────── */}
+      {selectedType === 'fundraising' && (
+        <fieldset className="create-campaign-section create-campaign-conditional">
+          <legend className="create-campaign-section-title">
+            Payout Details
+          </legend>
+          <p className="text-xs text-muted-foreground mb-4">
+            Only you and Utthan admins can see this. It&apos;s used to send you the funds raised.
+          </p>
+
+          {/* Method toggle */}
+          <div className="form-field">
+            <label className="form-label">Payout Method</label>
+            <Controller
+              name="payoutDetails.method"
+              control={control}
+              render={({ field }) => (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={field.value === 'upi' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => field.onChange('upi')}
+                  >
+                    UPI
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={field.value === 'bank' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => field.onChange('bank')}
+                  >
+                    Bank Account
+                  </Button>
+                </div>
+              )}
+            />
+          </div>
+
+          {/* UPI fields */}
+          {watch('payoutDetails.method') === 'upi' && (
+            <div className="form-field">
+              <label htmlFor="payout-upi" className="form-label">UPI ID</label>
+              <Input
+                id="payout-upi"
+                placeholder="e.g. name@bank"
+                aria-invalid={!!errors.payoutDetails?.upiId}
+                {...register('payoutDetails.upiId')}
+              />
+              {errors.payoutDetails?.upiId && (
+                <p className="form-error" role="alert">{errors.payoutDetails.upiId.message}</p>
+              )}
+            </div>
+          )}
+
+          {/* Bank fields */}
+          {watch('payoutDetails.method') === 'bank' && (
+            <>
+              <div className="form-field">
+                <label htmlFor="payout-holder" className="form-label">Account Holder Name</label>
+                <Input
+                  id="payout-holder"
+                  placeholder="Full name as on bank account"
+                  aria-invalid={!!errors.payoutDetails?.accountHolderName}
+                  {...register('payoutDetails.accountHolderName')}
+                />
+                {errors.payoutDetails?.accountHolderName && (
+                  <p className="form-error" role="alert">{errors.payoutDetails.accountHolderName.message}</p>
+                )}
+              </div>
+              <div className="form-field">
+                <label htmlFor="payout-account" className="form-label">Account Number</label>
+                <Input
+                  id="payout-account"
+                  placeholder="9-18 digit account number"
+                  aria-invalid={!!errors.payoutDetails?.accountNumber}
+                  {...register('payoutDetails.accountNumber')}
+                />
+                {errors.payoutDetails?.accountNumber && (
+                  <p className="form-error" role="alert">{errors.payoutDetails.accountNumber.message}</p>
+                )}
+              </div>
+              <div className="form-field">
+                <label htmlFor="payout-ifsc" className="form-label">IFSC Code</label>
+                <Input
+                  id="payout-ifsc"
+                  placeholder="e.g. HDFC0001234"
+                  aria-invalid={!!errors.payoutDetails?.ifsc}
+                  {...register('payoutDetails.ifsc')}
+                />
+                {errors.payoutDetails?.ifsc && (
+                  <p className="form-error" role="alert">{errors.payoutDetails.ifsc.message}</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Root payoutDetails error */}
+          {errors.payoutDetails?.message && (
+            <p className="form-error" role="alert">{errors.payoutDetails.message}</p>
+          )}
         </fieldset>
       )}
 

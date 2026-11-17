@@ -20,11 +20,7 @@ router.get(
 );
 
 // Participation Routes
-router.post(
-  '/:slug/join',
-  auth.protect,
-  participationController.joinCampaign,
-);
+router.post('/:slug/join', auth.protect, participationController.joinCampaign);
 router.delete(
   '/:slug/leave',
   auth.protect,
@@ -42,10 +38,13 @@ router.get(
 );
 
 // Donation Routes
+router.get('/:slug/donations', auth.protect, donationController.viewDonations);
+
+// Payout Details Route
 router.get(
-  '/:slug/donations',
+  '/:slug/payout-details',
   auth.protect,
-  donationController.viewDonations,
+  campaignController.getPayoutDetails,
 );
 
 // Campaign Management Routes

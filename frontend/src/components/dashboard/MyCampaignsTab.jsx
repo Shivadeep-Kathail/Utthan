@@ -8,9 +8,10 @@ import {
   Plus,
   Megaphone,
   SlidersHorizontal,
+  AlertCircle,
 } from 'lucide-react';
 
-import { getMyCampaigns, deleteCampaign } from '@/api/campaigns.api';
+import { getMyCampaigns, deleteCampaign, getPayoutDetails } from '@/api/campaigns.api';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -86,6 +87,9 @@ function MyCampaignsTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Payout details status for fundraising campaigns: { [campaignId]: boolean }
+  const [payoutStatus, setPayoutStatus] = useState({});
+
   // Delete confirmation dialog state
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -118,6 +122,29 @@ function MyCampaignsTab() {
   useEffect(() => {
     fetchCampaigns();
   }, [fetchCampaigns]);
+
+  // Check payout details status for fundraising campaigns
+  useEffect(() => {
+    const fundraisingCampaigns = campaigns.filter((c) => c.type === 'fundraising');
+    if (fundraisingCampaigns.length === 0) return;
+
+    Promise.allSettled(
+      fundraisingCampaigns.map((c) =>
+        getPayoutDetails(c.slug).then((res) => ({
+          id: c._id,
+          hasDetails: !!res.data?.payoutDetails,
+        })),
+      ),
+    ).then((results) => {
+      const statusMap = {};
+      results.forEach((r) => {
+        if (r.status === 'fulfilled') {
+          statusMap[r.value.id] = r.value.hasDetails;
+        }
+      });
+      setPayoutStatus(statusMap);
+    });
+  }, [campaigns]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -232,6 +259,20 @@ function MyCampaignsTab() {
                   <span className="my-campaigns-item-meta-sep">·</span>
                   <span>{formatDate(campaign.createdAt)}</span>
                 </div>
+
+                {/* Payout details nudge for fundraising campaigns */}
+                {campaign.type === 'fundraising' && payoutStatus[campaign._id] === false && (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>Payout details missing —</span>
+                    <Link
+                      to={`/campaigns/${campaign.slug}/edit`}
+                      className="font-medium underline underline-offset-2"
+                    >
+                      Add payout details
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { PenLine } from 'lucide-react';
+import { PenLine, AlertCircle } from 'lucide-react';
 
-import { getCampaignBySlug, updateCampaign } from '@/api/campaigns.api';
+import { getCampaignBySlug, updateCampaign, getPayoutDetails } from '@/api/campaigns.api';
 import { CampaignForm } from '@/components/campaigns/CampaignForm';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -13,6 +13,9 @@ import { Spinner } from '@/components/ui/spinner';
  * Uses the shared CampaignForm component in "edit" mode.
  * Fetches the campaign data by slug, pre-fills the form,
  * and submits changes via PATCH /api/campaign/:slug.
+ *
+ * For fundraising campaigns, also loads payout details from the
+ * dedicated endpoint and merges them into the initial data.
  */
 function EditCampaignPage() {
   const { slug } = useParams();
@@ -20,6 +23,7 @@ function EditCampaignPage() {
   const [campaign, setCampaign] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [payoutLoadError, setPayoutLoadError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -28,8 +32,24 @@ function EditCampaignPage() {
     async function fetchCampaign() {
       try {
         const res = await getCampaignBySlug(slug);
+        const campaignData = res.data.campaign;
+
+        // For fundraising campaigns, also load payout details
+        if (campaignData.type === 'fundraising') {
+          try {
+            const payoutRes = await getPayoutDetails(slug);
+            campaignData.payoutDetails = payoutRes.data.payoutDetails;
+          } catch {
+            if (!cancelled) {
+              setPayoutLoadError(
+                'Could not load existing payout details. You can still add or update them.',
+              );
+            }
+          }
+        }
+
         if (!cancelled) {
-          setCampaign(res.data.campaign);
+          setCampaign(campaignData);
         }
       } catch (err) {
         if (!cancelled) {
@@ -103,6 +123,16 @@ function EditCampaignPage() {
           </p>
         </div>
       </div>
+
+      {/* Payout details load warning */}
+      {payoutLoadError && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 mb-4">
+          <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" aria-hidden="true" />
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            {payoutLoadError}
+          </p>
+        </div>
+      )}
 
       <CampaignForm
         mode="edit"

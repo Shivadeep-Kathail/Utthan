@@ -8,14 +8,23 @@ exports.createCampaign = async (req, res, next) => {
   delete data.creator;
   delete data.status;
 
+  // Reject payoutDetails for non-fundraising campaigns
+  if (data.type !== 'fundraising') {
+    delete data.payoutDetails;
+  }
+
   const newCampaign = await Campaign.create({
     ...data,
     creator: req.user.id,
   });
+
+  const responseObj = newCampaign.toObject();
+  delete responseObj.payoutDetails;
+
   res.status(201).json({
     status: 'success',
     data: {
-      campaign: newCampaign,
+      campaign: responseObj,
     },
   });
 };
@@ -99,7 +108,13 @@ exports.updateCampaign = async (req, res, next) => {
     'coverImage',
     'images',
     'location',
+    'payoutDetails',
   );
+
+  // Only allow payoutDetails updates for fundraising campaigns
+  if (campaign.type !== 'fundraising') {
+    delete filteredBody.payoutDetails;
+  }
 
   if (Object.keys(filteredBody).length === 0) {
     return next(new AppError('No valid fields provided for update.', 422));
@@ -109,10 +124,13 @@ exports.updateCampaign = async (req, res, next) => {
   Object.assign(campaign, filteredBody);
   await campaign.save();
 
+  const responseObj = campaign.toObject();
+  delete responseObj.payoutDetails;
+
   res.status(200).json({
     status: 'success',
     data: {
-      campaign,
+      campaign: responseObj,
     },
   });
 };
@@ -139,5 +157,33 @@ exports.deleteCampaign = async (req, res, next) => {
   res.status(204).json({
     status: 'success',
     data: null,
+  });
+};
+
+exports.getPayoutDetails = async (req, res, next) => {
+  const campaign = await Campaign.findOne({
+    slug: req.params.slug,
+    isDeleted: false,
+  }).select('+payoutDetails');
+
+  if (!campaign) {
+    return next(new AppError('No campaign found', 404));
+  }
+
+  // Only the campaign creator or an admin can view payout details
+  if (
+    campaign.creator.toString() !== req.user.id &&
+    req.user.role !== 'admin'
+  ) {
+    return next(
+      new AppError('You do not have permission to view payout details', 403),
+    );
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      payoutDetails: campaign.payoutDetails || null,
+    },
   });
 };

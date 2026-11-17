@@ -162,6 +162,16 @@ export function getMyParticipations() {
     .then((res) => res.data);
 }
 
+/**
+ * Get payout details for a campaign (creator or admin only).
+ * Response: { status, data: { payoutDetails } }
+ */
+export function getPayoutDetails(slug) {
+  return axiosClient
+    .get(`/campaign/${slug}/payout-details`)
+    .then((res) => res.data);
+}
+
 export function uploadImage(file) {
   const formData = new FormData();
   formData.append('image', file);
